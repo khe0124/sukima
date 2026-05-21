@@ -22,7 +22,7 @@ import {
   validateUploadFiles,
 } from "@/lib/upload-form";
 import {
-  UPLOAD_FORM_DEV_DEFAULT_VALUES,
+  UPLOAD_FORM_DEFAULT_VALUES,
   UPLOAD_VISIBILITY_OPTIONS,
   type SelectedFilePreview,
   type UploadFormValues,
@@ -71,10 +71,11 @@ export default function UploadPageClient() {
     control,
     handleSubmit,
     register,
+    reset,
     setValue,
     formState: { isSubmitting },
   } = useForm<UploadFormValues>({
-    defaultValues: UPLOAD_FORM_DEV_DEFAULT_VALUES,
+    defaultValues: UPLOAD_FORM_DEFAULT_VALUES,
   });
 
   const filesField = register("files");
@@ -244,6 +245,7 @@ export default function UploadPageClient() {
 
       if (failedCount === 0) {
         setSelectedFiles([]);
+        reset(UPLOAD_FORM_DEFAULT_VALUES);
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
@@ -282,7 +284,6 @@ export default function UploadPageClient() {
         className="upload-form"
         noValidate
         onSubmit={runUpload}
-        onSubmitCapture={(event) => event.preventDefault()}
       >
         <label
           className="dropzone"
@@ -406,11 +407,7 @@ export default function UploadPageClient() {
           />
         </fieldset>
 
-        <button
-          aria-busy={isSubmitting}
-          type="button"
-          onClick={() => runUpload()}
-        >
+        <button aria-busy={isSubmitting} disabled={isSubmitting} type="submit">
           {isSubmitting ? "Uploading..." : "Upload"}
         </button>
         <p role="status">

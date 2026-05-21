@@ -42,13 +42,3 @@ export const UPLOAD_FORM_DEFAULT_VALUES: UploadFormValues = {
   tags: "",
   visibility: "private",
 };
-
-/** Local testing defaults for the admin upload form. */
-export const UPLOAD_FORM_DEV_DEFAULT_VALUES: UploadFormValues = {
-  files: null,
-  title: "test",
-  description: "test",
-  takenAt: "2026-05-21T10:00",
-  tags: "test",
-  visibility: "private",
-};

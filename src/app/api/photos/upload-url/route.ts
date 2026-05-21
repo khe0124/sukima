@@ -30,8 +30,7 @@ export async function POST(request: NextRequest) {
     });
     const uploadUrl = await createOriginalUploadUrl({
       storageKey: storageKeyOriginal,
-      contentType: upload.contentType,
-      size: upload.size
+      contentType: upload.contentType
     });
 
     return NextResponse.json({

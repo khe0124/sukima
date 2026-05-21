@@ -12,6 +12,7 @@ export function getR2Client() {
     client = new S3Client({
       region: "auto",
       endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+      requestChecksumCalculation: "WHEN_REQUIRED",
       credentials: {
         accessKeyId: getRequiredEnv("R2_ACCESS_KEY_ID"),
         secretAccessKey: getRequiredEnv("R2_SECRET_ACCESS_KEY")
@@ -24,18 +25,15 @@ export function getR2Client() {
 
 export async function createOriginalUploadUrl({
   storageKey,
-  contentType,
-  size
+  contentType
 }: {
   storageKey: string;
   contentType: AllowedImageType;
-  size: number;
 }) {
   const command = new PutObjectCommand({
     Bucket: getRequiredEnv("R2_BUCKET_PRIVATE"),
     Key: storageKey,
-    ContentType: contentType,
-    ContentLength: size
+    ContentType: contentType
   });
 
   return getSignedUrl(getR2Client(), command, { expiresIn: 600 });

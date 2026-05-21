@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
+import "@testing-library/jest-dom/vitest";
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import UploadPageClient from "./UploadPageClient";
@@ -45,15 +45,15 @@ describe("UploadPageClient", () => {
     vi.unstubAllGlobals();
   });
 
-  it("renders upload controls ready for client-side upload", () => {
-    const html = renderToStaticMarkup(<UploadPageClient />);
+  it("renders an empty upload form ready for client-side upload", () => {
+    render(<UploadPageClient />);
 
-    expect(html).toContain('<form class="upload-form" novalidate=""');
-    expect(html).toContain('type="button"');
-    expect(html).not.toContain("Loading upload form...");
-    expect(html).toContain(">Upload</button>");
-    expect(html).toContain('Drop images here or click to choose');
-    expect(html).toContain("Toastify");
+    expect(screen.getByLabelText("Title")).toHaveValue("");
+    expect(screen.getByLabelText("Description")).toHaveValue("");
+    expect(screen.getByLabelText("Taken at")).toHaveValue("");
+    expect(screen.getByLabelText("Tags")).toHaveValue("");
+    expect(screen.getByRole("button", { name: "Upload" })).toHaveAttribute("type", "submit");
+    expect(screen.getByText("Drop images here or click to choose")).toBeTruthy();
   });
 
   it("starts the upload URL API request after selecting a file and submitting", async () => {
@@ -75,6 +75,30 @@ describe("UploadPageClient", () => {
         })
       );
     });
+  });
+
+  it("clears form file state after a successful upload", async () => {
+    render(<UploadPageClient />);
+
+    const file = new File(["image-bytes"], "photo.jpg", { type: "image/jpeg" });
+    fireEvent.change(screen.getByLabelText(/images/i), {
+      target: {
+        files: [file]
+      }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe("Uploaded and processed 1 file.");
+    });
+
+    vi.mocked(fetch).mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe("Choose at least one image.");
+    });
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("shows the validation failure instead of calling the API for an invalid file", async () => {
