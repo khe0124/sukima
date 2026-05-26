@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
 
-import { parseUpdatePhotoRequest } from "./photos";
+import { parseCreatePhotoRequest, parseUpdatePhotoRequest } from "./photos";
+
+describe("parseCreatePhotoRequest", () => {
+  it("keeps uploaded photo tags as a clean unique list", () => {
+    expect(
+      parseCreatePhotoRequest({
+        photoId: "550e8400-e29b-41d4-a716-446655440000",
+        storageKeyOriginal: "private/originals/2026/05/26/550e8400-e29b-41d4-a716-446655440000-original.png",
+        tags: ["street", " street ", "night"],
+        visibility: "public"
+      }).tags
+    ).toEqual(["street", "night"]);
+  });
+});
 
 describe("parseUpdatePhotoRequest", () => {
   it("accepts metadata updates with tag arrays", () => {

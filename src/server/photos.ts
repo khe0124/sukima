@@ -61,11 +61,36 @@ type PhotoOriginalRow = {
 };
 
 export function parseCreatePhotoRequest(input: unknown): CreatePhotoInput {
-  return createPhotoSchema.parse(input);
+  const parsed = createPhotoSchema.parse(input);
+
+  return {
+    ...parsed,
+    tags: normalizeTagNames(parsed.tags)
+  };
 }
 
 export function parseUpdatePhotoRequest(input: unknown): UpdatePhotoInput {
-  return updatePhotoSchema.parse(input);
+  const parsed = updatePhotoSchema.parse(input);
+
+  return {
+    ...parsed,
+    tags: normalizeTagNames(parsed.tags)
+  };
+}
+
+function normalizeTagNames(tags: string[]) {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const tag of tags) {
+    const slug = slugify(tag);
+    if (!slug || seen.has(slug)) continue;
+
+    seen.add(slug);
+    normalized.push(tag.trim());
+  }
+
+  return normalized;
 }
 
 function mapPhotoRow(row: PhotoRow): PhotoListItem {
