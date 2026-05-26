@@ -27,6 +27,33 @@ async function readJsonError(response: Response, fallback: string) {
   }
 }
 
+function readXmlTag(text: string, tagName: string) {
+  const match = new RegExp(`<${tagName}>([\\s\\S]*?)</${tagName}>`).exec(text);
+  return match?.[1]?.trim() || null;
+}
+
+async function readR2UploadError(response: Response) {
+  const fallback = `R2 upload failed with ${response.status}.`;
+
+  try {
+    const text = await response.text();
+    const code = readXmlTag(text, "Code");
+    const message = readXmlTag(text, "Message");
+
+    if (code && message) {
+      return `R2 upload failed with ${response.status}: ${code} - ${message}`;
+    }
+
+    if (code) {
+      return `R2 upload failed with ${response.status}: ${code}`;
+    }
+
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export async function uploadPhotoFile({
   file,
   commonTitle,
@@ -82,7 +109,7 @@ export async function uploadPhotoFile({
   });
 
   if (!r2Response.ok) {
-    throw new Error("R2 upload failed.");
+    throw new Error(await readR2UploadError(r2Response));
   }
   onStageSuccess?.("r2-upload");
 

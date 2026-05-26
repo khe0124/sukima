@@ -4,7 +4,8 @@ import {
   MAX_UPLOAD_BYTES,
   buildOriginalStorageKey,
   normalizePhotoListLimit,
-  parseUploadUrlRequest
+  parseUploadUrlRequest,
+  toPublicPhotoUrl
 } from "./photos";
 
 describe("parseUploadUrlRequest", () => {
@@ -62,5 +63,17 @@ describe("normalizePhotoListLimit", () => {
     expect(normalizePhotoListLimit(null)).toBe(30);
     expect(normalizePhotoListLimit("200")).toBe(100);
     expect(normalizePhotoListLimit("12")).toBe(12);
+  });
+});
+
+describe("toPublicPhotoUrl", () => {
+  it("keeps the full public object key in generated URLs", () => {
+    process.env.R2_PUBLIC_BASE_URL = "https://pub.example.com";
+
+    expect(
+      toPublicPhotoUrl("public/photos/2026/05/26/photo-id-thumb.webp")
+    ).toBe("https://pub.example.com/public/photos/2026/05/26/photo-id-thumb.webp");
+
+    delete process.env.R2_PUBLIC_BASE_URL;
   });
 });

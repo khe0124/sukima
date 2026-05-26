@@ -83,5 +83,5 @@ export function toPublicPhotoUrl(storageKey: string | null) {
   const baseUrl = process.env.R2_PUBLIC_BASE_URL;
   if (!baseUrl) return null;
 
-  return `${baseUrl.replace(/\/$/, "")}/${storageKey.replace(/^public\//, "")}`;
+  return `${baseUrl.replace(/\/$/, "")}/${storageKey.replace(/^\/+/, "")}`;
 }
