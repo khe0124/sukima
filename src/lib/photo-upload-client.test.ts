@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { uploadPhotoFile } from "./photo-upload-client";
+import { uploadPhotoFile, uploadPhotoSet } from "./photo-upload-client";
 
 describe("uploadPhotoFile", () => {
   it("uses the expected presigned upload request sequence", async () => {
@@ -157,5 +157,84 @@ describe("uploadPhotoFile", () => {
     ).rejects.toThrow(
       "R2 upload failed with 403: SignatureDoesNotMatch - The request signature we calculated does not match."
     );
+  });
+
+  it("uploads a photo set as one metadata record with selected representative and assets", async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const fetcher = async (url: string, init: RequestInit = {}) => {
+      calls.push({ url, init });
+
+      if (url === "/api/photos/upload-url") {
+        const body = JSON.parse(String(init.body)) as { filename: string };
+        const id = body.filename.includes("cover") ? "cover-id" : "detail-id";
+
+        return Response.json({
+          uploadUrl: `https://r2.example/${id}`,
+          photoId: id,
+          storageKeyOriginal: `private/originals/2026/05/21/${id}-original.jpg`
+        });
+      }
+
+      return Response.json({ ok: true }, { status: init.method === "POST" ? 201 : 200 });
+    };
+
+    await uploadPhotoSet({
+      files: [
+        {
+          name: "detail.jpg",
+          type: "image/jpeg",
+          size: 100
+        } as File,
+        {
+          name: "cover.jpg",
+          type: "image/jpeg",
+          size: 200
+        } as File
+      ],
+      representativeIndex: 1,
+      title: "Photo Set",
+      description: "",
+      takenAtValue: "",
+      tags: ["street"],
+      visibility: "public",
+      collectionIds: ["550e8400-e29b-41d4-a716-446655440000"],
+      fetcher
+    });
+
+    const metadataCall = calls.find((call) => call.url === "/api/photos");
+    expect(metadataCall).toBeTruthy();
+    expect(JSON.parse(String(metadataCall?.init.body))).toMatchObject({
+      photoId: "cover-id",
+      storageKeyOriginal: "private/originals/2026/05/21/cover-id-original.jpg",
+      title: "Photo Set",
+      collectionIds: ["550e8400-e29b-41d4-a716-446655440000"],
+      assets: [
+        {
+          storageKeyOriginal: "private/originals/2026/05/21/detail-id-original.jpg",
+          sortOrder: 0,
+          isPrimary: false
+        },
+        {
+          storageKeyOriginal: "private/originals/2026/05/21/cover-id-original.jpg",
+          sortOrder: 1,
+          isPrimary: true
+        }
+      ]
+    });
+  });
+
+  it("throws a clear error when uploading an empty photo set", async () => {
+    await expect(
+      uploadPhotoSet({
+        files: [],
+        representativeIndex: 0,
+        title: "",
+        description: "",
+        takenAtValue: "",
+        tags: [],
+        visibility: "private",
+        collectionIds: []
+      })
+    ).rejects.toThrow("Choose at least one image.");
   });
 });

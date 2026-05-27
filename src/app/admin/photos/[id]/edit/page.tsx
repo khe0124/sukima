@@ -1,14 +1,20 @@
 /* eslint-disable @next/next/no-img-element */
 import { notFound } from "next/navigation";
 
-import { getAdminPhotoById } from "@/server/photos";
+import { getCollections } from "@/server/collections";
+import { getAdminPhotoByIdWithRelations } from "@/server/photos";
+import { getTags } from "@/server/tags";
 
 import { EditPhotoForm } from "./EditPhotoForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function EditPhotoPage({ params }: { params: { id: string } }) {
-  const photo = await getAdminPhotoById(params.id);
+  const [photo, collections, tags] = await Promise.all([
+    getAdminPhotoByIdWithRelations(params.id),
+    getCollections(),
+    getTags()
+  ]);
 
   if (!photo) {
     notFound();
@@ -36,7 +42,7 @@ export default async function EditPhotoPage({ params }: { params: { id: string }
         />
       ) : null}
 
-      <EditPhotoForm photo={photo} />
+      <EditPhotoForm photo={photo} collections={collections} tags={tags} />
     </main>
   );
 }

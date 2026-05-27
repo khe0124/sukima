@@ -2,12 +2,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { getPhotoBySlug } from "@/server/photos";
+import { getPhotoBySlugWithAssets } from "@/server/photos";
 
 export const dynamic = "force-dynamic";
 
 export default async function PhotoDetailPage({ params }: { params: { slug: string } }) {
-  const photo = await getPhotoBySlug(params.slug);
+  const photo = await getPhotoBySlugWithAssets(params.slug);
 
   if (!photo) {
     notFound();
@@ -50,6 +50,25 @@ export default async function PhotoDetailPage({ params }: { params: { slug: stri
               </li>
             ))}
           </ul>
+        ) : null}
+        {photo.assets && photo.assets.filter((asset) => !asset.isPrimary).length > 0 ? (
+          <div className="detail-asset-grid" aria-label="Additional images">
+            {photo.assets
+              .filter((asset) => !asset.isPrimary)
+              .map((asset) => {
+                const assetUrl = asset.largeUrl || asset.mediumUrl || asset.thumbnailUrl;
+
+                return assetUrl ? (
+                  <img
+                    alt=""
+                    height={asset.height || 900}
+                    key={asset.id}
+                    src={assetUrl}
+                    width={asset.width || 1200}
+                  />
+                ) : null;
+              })}
+          </div>
         ) : null}
       </section>
     </main>

@@ -3,11 +3,23 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import type { CollectionListItem } from "@/server/collections";
+import type { TagListItem } from "@/server/tags";
 import type { PhotoListItem } from "@/types/photo";
 
-export function EditPhotoForm({ photo }: { photo: PhotoListItem }) {
+export function EditPhotoForm({
+  photo,
+  collections = [],
+  tags: availableTags = []
+}: {
+  photo: PhotoListItem;
+  collections?: CollectionListItem[];
+  tags?: TagListItem[];
+}) {
   const router = useRouter();
   const [status, setStatus] = useState("Ready");
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>(photo.collectionIds ?? []);
+  const [selectedTags, setSelectedTags] = useState<string[]>(photo.tags);
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,11 +36,17 @@ export function EditPhotoForm({ photo }: { photo: PhotoListItem }) {
         title: String(form.get("title") || ""),
         description: String(form.get("description") || ""),
         takenAt: takenAtValue ? new Date(takenAtValue).toISOString() : "",
-        tags: String(form.get("tags") || "")
-          .split(",")
-          .map((tag) => tag.trim())
-          .filter(Boolean),
-        visibility: String(form.get("visibility") || "private")
+        tags: Array.from(
+          new Set([
+            ...selectedTags,
+            ...String(form.get("tags") || "")
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter(Boolean)
+          ])
+        ),
+        visibility: String(form.get("visibility") || "private"),
+        collectionIds: selectedCollectionIds
       })
     });
 
@@ -108,8 +126,54 @@ export function EditPhotoForm({ photo }: { photo: PhotoListItem }) {
       </label>
       <label>
         Tags
-        <input name="tags" type="text" defaultValue={photo.tags.join(", ")} />
+        <input name="tags" type="text" placeholder="street, night, seoul" />
       </label>
+      {availableTags.length > 0 ? (
+        <details className="check-menu">
+          <summary>Existing tags ({selectedTags.length})</summary>
+          <div>
+            {availableTags.map((tag) => (
+              <label key={tag.id}>
+                <input
+                  checked={selectedTags.includes(tag.name)}
+                  onChange={(event) => {
+                    setSelectedTags((current) =>
+                      event.currentTarget.checked
+                        ? [...current, tag.name]
+                        : current.filter((name) => name !== tag.name)
+                    );
+                  }}
+                  type="checkbox"
+                />
+                <span>{tag.name}</span>
+              </label>
+            ))}
+          </div>
+        </details>
+      ) : null}
+      {collections.length > 0 ? (
+        <fieldset className="visibility-control">
+          <legend>Collections</legend>
+          <div>
+            {collections.map((collection) => (
+              <label key={collection.id}>
+                <input
+                  checked={selectedCollectionIds.includes(collection.id)}
+                  onChange={(event) => {
+                    setSelectedCollectionIds((current) =>
+                      event.currentTarget.checked
+                        ? [...current, collection.id]
+                        : current.filter((id) => id !== collection.id)
+                    );
+                  }}
+                  type="checkbox"
+                />
+                <span>{collection.title}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
       <label>
         Visibility
         <select name="visibility" defaultValue={photo.visibility ?? "private"}>

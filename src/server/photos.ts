@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import type { PoolClient } from "pg";
 import { z } from "zod";
 
 import { getPool, query } from "@/lib/db";
@@ -7,9 +8,18 @@ import { buildProcessedStorageKeys, generateProcessedImages } from "@/lib/image-
 import { normalizePhotoListLimit, toPublicPhotoUrl } from "@/lib/photos";
 import { createOriginalDownloadUrl, readPrivateObject, writePublicObject } from "@/lib/r2";
 import { slugify } from "@/lib/slug";
-import type { PhotoListItem } from "@/types/photo";
+import type { PhotoAssetListItem, PhotoListItem } from "@/types/photo";
 
-const createPhotoSchema = z.object({
+const photoAssetInputSchema = z.object({
+  storageKeyOriginal: z.string().startsWith("private/originals/"),
+  fileSize: z.number().int().positive().optional(),
+  mimeType: z.string().optional(),
+  sortOrder: z.number().int().min(0).default(0),
+  isPrimary: z.boolean().default(false)
+});
+
+const createPhotoSchema = z
+  .object({
   photoId: z.string().uuid(),
   storageKeyOriginal: z.string().startsWith("private/originals/"),
   title: z.string().trim().max(160).optional(),
@@ -18,15 +28,50 @@ const createPhotoSchema = z.object({
   tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
   visibility: z.enum(["private", "public", "unlisted", "draft"]).default("private"),
   fileSize: z.number().int().positive().optional(),
-  mimeType: z.string().optional()
-});
+  mimeType: z.string().optional(),
+  assets: z.array(photoAssetInputSchema).max(20).default([]),
+  collectionIds: z.array(z.string().uuid()).max(20).default([])
+  })
+  .superRefine((photo, context) => {
+    if (photo.assets.length === 0) return;
+
+    const primaryAssets = photo.assets.filter((asset) => asset.isPrimary);
+    if (primaryAssets.length !== 1) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Exactly one representative image is required.",
+        path: ["assets"]
+      });
+    }
+
+    if (primaryAssets[0] && primaryAssets[0].storageKeyOriginal !== photo.storageKeyOriginal) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Representative image must match the primary original key.",
+        path: ["assets"]
+      });
+    }
+
+    const seenStorageKeys = new Set<string>();
+    for (const [index, asset] of photo.assets.entries()) {
+      if (seenStorageKeys.has(asset.storageKeyOriginal)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Duplicate photo asset original key.",
+          path: ["assets", index, "storageKeyOriginal"]
+        });
+      }
+      seenStorageKeys.add(asset.storageKeyOriginal);
+    }
+  });
 
 const updatePhotoSchema = z.object({
   title: z.string().trim().max(160).optional(),
   description: z.string().trim().max(2000).optional(),
   takenAt: z.string().datetime({ offset: true }).optional().or(z.literal("")),
   tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
-  visibility: z.enum(["private", "public", "unlisted", "draft"]).optional()
+  visibility: z.enum(["private", "public", "unlisted", "draft"]).optional(),
+  collectionIds: z.array(z.string().uuid()).max(20).optional()
 });
 
 type CreatePhotoInput = z.infer<typeof createPhotoSchema>;
@@ -58,6 +103,20 @@ type PhotoProcessRow = {
 type PhotoOriginalRow = {
   id: string;
   storage_key_original: string;
+};
+
+type PhotoAssetRow = {
+  id: string;
+  photo_id: string;
+  storage_key_original: string;
+  storage_key_thumbnail: string | null;
+  storage_key_medium: string | null;
+  storage_key_large: string | null;
+  storage_key_blur: string | null;
+  width: number | null;
+  height: number | null;
+  sort_order: number;
+  is_primary: boolean;
 };
 
 export function parseCreatePhotoRequest(input: unknown): CreatePhotoInput {
@@ -113,6 +172,63 @@ function mapPhotoRow(row: PhotoRow): PhotoListItem {
   };
 }
 
+function mapPhotoAssetRow(row: PhotoAssetRow): PhotoAssetListItem {
+  return {
+    id: row.id,
+    photoId: row.photo_id,
+    storageKeyOriginal: row.storage_key_original,
+    thumbnailUrl: toPublicPhotoUrl(row.storage_key_thumbnail),
+    mediumUrl: toPublicPhotoUrl(row.storage_key_medium),
+    largeUrl: toPublicPhotoUrl(row.storage_key_large),
+    blurUrl: toPublicPhotoUrl(row.storage_key_blur),
+    width: row.width,
+    height: row.height,
+    sortOrder: row.sort_order,
+    isPrimary: row.is_primary
+  };
+}
+
+export function getCollectionMembershipChanges(currentIds: string[], desiredIds: string[]) {
+  const current = new Set(currentIds);
+  const desired = new Set(desiredIds);
+
+  return {
+    removed: currentIds.filter((collectionId) => !desired.has(collectionId)),
+    added: desiredIds.filter((collectionId) => !current.has(collectionId))
+  };
+}
+
+async function replacePhotoCollections(client: PoolClient, photoId: string, collectionIds: string[]) {
+  const current = await client.query<{ collection_id: string }>(
+    "SELECT collection_id FROM collection_photos WHERE photo_id = $1",
+    [photoId]
+  );
+  const { added, removed } = getCollectionMembershipChanges(
+    current.rows.map((row) => row.collection_id),
+    collectionIds
+  );
+
+  for (const collectionId of removed) {
+    await client.query("DELETE FROM collection_photos WHERE photo_id = $1 AND collection_id = $2", [
+      photoId,
+      collectionId
+    ]);
+  }
+
+  for (const collectionId of added) {
+    await client.query(
+      `INSERT INTO collection_photos (collection_id, photo_id, sort_order)
+       VALUES (
+         $1,
+         $2,
+         COALESCE((SELECT MAX(sort_order) + 1 FROM collection_photos WHERE collection_id = $1), 0)
+       )
+       ON CONFLICT DO NOTHING`,
+      [collectionId, photoId]
+    );
+  }
+}
+
 export async function createPhoto(input: unknown) {
   const parsed = parseCreatePhotoRequest(input);
   const title = parsed.title || null;
@@ -164,6 +280,39 @@ export async function createPhoto(input: unknown) {
         [parsed.photoId, tag.rows[0].id]
       );
     }
+
+    const assetInputs =
+      parsed.assets.length > 0
+        ? parsed.assets
+        : [
+            {
+              storageKeyOriginal: parsed.storageKeyOriginal,
+              fileSize: parsed.fileSize,
+              mimeType: parsed.mimeType,
+              sortOrder: 0,
+              isPrimary: true
+            }
+          ];
+
+    for (const asset of assetInputs) {
+      await client.query(
+        `INSERT INTO photo_assets (
+          id, photo_id, storage_key_original, file_size, mime_type, sort_order, is_primary
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          randomUUID(),
+          parsed.photoId,
+          asset.storageKeyOriginal,
+          asset.fileSize || null,
+          asset.mimeType || null,
+          asset.sortOrder,
+          asset.isPrimary
+        ]
+      );
+    }
+
+    await replacePhotoCollections(client, parsed.photoId, parsed.collectionIds);
 
     await client.query("COMMIT");
     return photo.rows[0];
@@ -362,6 +511,10 @@ export async function updatePhoto(photoId: string, input: unknown) {
       );
     }
 
+    if (parsed.collectionIds) {
+      await replacePhotoCollections(client, photoId, parsed.collectionIds);
+    }
+
     await client.query("COMMIT");
     return getAdminPhotoById(photoId);
   } catch (error) {
@@ -370,6 +523,68 @@ export async function updatePhoto(photoId: string, input: unknown) {
   } finally {
     client.release();
   }
+}
+
+export async function getPhotoAssets(photoId: string) {
+  const result = await query<PhotoAssetRow>(
+    `SELECT
+       id,
+       photo_id,
+       storage_key_original,
+       storage_key_thumbnail,
+       storage_key_medium,
+       storage_key_large,
+       storage_key_blur,
+       width,
+       height,
+       sort_order,
+       is_primary
+     FROM photo_assets
+     WHERE photo_id = $1
+     ORDER BY sort_order ASC, created_at ASC`,
+    [photoId]
+  );
+
+  return result.rows.map(mapPhotoAssetRow);
+}
+
+export async function getPhotoCollectionIds(photoId: string) {
+  const result = await query<{ collection_id: string }>(
+    `SELECT collection_id
+     FROM collection_photos
+     WHERE photo_id = $1
+     ORDER BY collection_id ASC`,
+    [photoId]
+  );
+
+  return result.rows.map((row) => row.collection_id);
+}
+
+export async function getPhotoBySlugWithAssets(slug: string) {
+  const photo = await getPhotoBySlug(slug);
+  if (!photo) return null;
+
+  const assets = await getPhotoAssets(photo.id);
+  return {
+    ...photo,
+    assets
+  };
+}
+
+export async function getAdminPhotoByIdWithRelations(photoId: string) {
+  const photo = await getAdminPhotoById(photoId);
+  if (!photo) return null;
+
+  const [assets, collectionIds] = await Promise.all([
+    getPhotoAssets(photoId),
+    getPhotoCollectionIds(photoId)
+  ]);
+
+  return {
+    ...photo,
+    assets,
+    collectionIds
+  };
 }
 
 export async function softDeletePhoto(photoId: string) {
@@ -438,6 +653,72 @@ export async function processPhoto(photoId: string) {
        WHERE id = $1`,
       [photoId, keys.large, keys.medium, keys.thumbnail, keys.blur, processed.width, processed.height]
     );
+
+    const assets = await query<PhotoAssetRow>(
+      `SELECT
+         id,
+         photo_id,
+         storage_key_original,
+         storage_key_thumbnail,
+         storage_key_medium,
+         storage_key_large,
+         storage_key_blur,
+         width,
+         height,
+         sort_order,
+         is_primary
+       FROM photo_assets
+       WHERE photo_id = $1
+       ORDER BY sort_order ASC`,
+      [photoId]
+    );
+
+    for (const asset of assets.rows) {
+      const assetKeys = buildProcessedStorageKeys(asset.storage_key_original);
+      const isRepresentativeAsset = asset.storage_key_original === row.storage_key_original;
+
+      if (isRepresentativeAsset) {
+        await query(
+          `UPDATE photo_assets
+           SET
+             storage_key_large = $2,
+             storage_key_medium = $3,
+             storage_key_thumbnail = $4,
+             storage_key_blur = $5,
+             width = $6,
+             height = $7,
+             is_primary = TRUE,
+             updated_at = NOW()
+           WHERE id = $1`,
+          [asset.id, keys.large, keys.medium, keys.thumbnail, keys.blur, processed.width, processed.height]
+        );
+        continue;
+      }
+
+      const assetOriginal = await readPrivateObject(asset.storage_key_original);
+      const assetProcessed = await generateProcessedImages(assetOriginal);
+
+      for (const variant of assetProcessed.variants) {
+        await writePublicObject({
+          storageKey: assetKeys[variant.name],
+          body: variant.buffer
+        });
+      }
+
+      await query(
+        `UPDATE photo_assets
+         SET
+           storage_key_large = $2,
+           storage_key_medium = $3,
+           storage_key_thumbnail = $4,
+           storage_key_blur = $5,
+           width = $6,
+           height = $7,
+           updated_at = NOW()
+         WHERE id = $1`,
+        [asset.id, assetKeys.large, assetKeys.medium, assetKeys.thumbnail, assetKeys.blur, assetProcessed.width, assetProcessed.height]
+      );
+    }
 
     return {
       id: photoId,

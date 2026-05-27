@@ -1,11 +1,15 @@
 import { getCollections } from "@/server/collections";
+import { getPhotos } from "@/server/photos";
 
 import { CollectionManager } from "./CollectionManager";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminCollectionsPage() {
-  const collections = await getCollections();
+  const [collections, photos] = await Promise.all([
+    getCollections(),
+    getPhotos({ limit: "100", cursor: null, includePrivate: true })
+  ]);
 
   return (
     <main className="shell archive-shell">
@@ -15,7 +19,7 @@ export default async function AdminCollectionsPage() {
         <p>Create curated groups of photos and control their visibility.</p>
       </section>
 
-      <CollectionManager collections={collections} />
+      <CollectionManager collections={collections} photos={photos.items} />
     </main>
   );
 }

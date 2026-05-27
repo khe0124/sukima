@@ -49,6 +49,24 @@ CREATE TABLE IF NOT EXISTS photo_tags (
   PRIMARY KEY (photo_id, tag_id)
 );
 
+CREATE TABLE IF NOT EXISTS photo_assets (
+  id TEXT PRIMARY KEY,
+  photo_id TEXT NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
+  storage_key_original TEXT NOT NULL,
+  storage_key_large TEXT,
+  storage_key_medium TEXT,
+  storage_key_thumbnail TEXT,
+  storage_key_blur TEXT,
+  width INTEGER,
+  height INTEGER,
+  file_size INTEGER,
+  mime_type TEXT,
+  sort_order INTEGER DEFAULT 0,
+  is_primary BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS collections (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
@@ -73,6 +91,16 @@ CREATE TABLE IF NOT EXISTS collection_photos (
 CREATE INDEX IF NOT EXISTS photos_public_list_idx
   ON photos (uploaded_at DESC, id DESC)
   WHERE visibility = 'public' AND status <> 'deleted';
+
+CREATE INDEX IF NOT EXISTS photo_assets_photo_id_idx
+  ON photo_assets (photo_id, sort_order ASC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS photo_assets_one_primary_per_photo_idx
+  ON photo_assets (photo_id)
+  WHERE is_primary = TRUE;
+
+CREATE UNIQUE INDEX IF NOT EXISTS photo_assets_photo_original_key_idx
+  ON photo_assets (photo_id, storage_key_original);
 
 CREATE INDEX IF NOT EXISTS photo_tags_tag_id_idx ON photo_tags (tag_id);
 CREATE INDEX IF NOT EXISTS collection_photos_photo_id_idx ON collection_photos (photo_id);

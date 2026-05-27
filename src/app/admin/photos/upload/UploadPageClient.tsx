@@ -12,7 +12,7 @@ import {
 import { Controller, useForm } from "react-hook-form";
 import { ToastContainer, toast } from "react-toastify";
 
-import { uploadPhotoFile } from "@/lib/photo-upload-client";
+import { uploadPhotoSet } from "@/lib/photo-upload-client";
 import {
   formatFileSize,
   formatUploadProgressMessage,
@@ -21,6 +21,8 @@ import {
   parseTagInput,
   validateUploadFiles,
 } from "@/lib/upload-form";
+import type { CollectionListItem } from "@/server/collections";
+import type { TagListItem } from "@/server/tags";
 import {
   UPLOAD_FORM_DEFAULT_VALUES,
   UPLOAD_VISIBILITY_OPTIONS,
@@ -60,11 +62,20 @@ function buildFilePreviews(files: File[]): SelectedFilePreview[] {
   }));
 }
 
-export default function UploadPageClient() {
+export default function UploadPageClient({
+  collections = [],
+  tags: availableTags = []
+}: {
+  collections?: CollectionListItem[];
+  tags?: TagListItem[];
+}) {
   const [status, setStatus] = useState("Ready");
   const [results, setResults] = useState<UploadResult[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<SelectedFilePreview[]>([]);
+  const [representativeIndex, setRepresentativeIndex] = useState(0);
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const {
@@ -93,6 +104,7 @@ export default function UploadPageClient() {
 
     setSelectedFiles(nextSelectedFiles);
     setResults([]);
+    setRepresentativeIndex(0);
 
     if (files.length === 0) {
       setStatus("Ready");
@@ -172,7 +184,7 @@ export default function UploadPageClient() {
         return;
       }
 
-      const tags = parseTagInput(form.tags);
+      const tags = Array.from(new Set([...selectedTags, ...parseTagInput(form.tags)]));
       const nextResults: UploadResult[] = [];
 
       toast.info(
@@ -186,45 +198,48 @@ export default function UploadPageClient() {
         })),
       );
 
-      for (let index = 0; index < files.length; index += 1) {
-        const file = files[index];
-
-        try {
-          const result = await uploadPhotoFile({
-            file,
-            commonTitle: form.title,
-            description: form.description,
-            takenAtValue: form.takenAt,
-            tags,
-            visibility: form.visibility,
-            totalFiles: files.length,
-            onStage: (stage) => {
+      try {
+        const uploadResults = await uploadPhotoSet({
+          files,
+          representativeIndex: Math.min(representativeIndex, files.length - 1),
+          title: form.title,
+          description: form.description,
+          takenAtValue: form.takenAt,
+          tags,
+          visibility: form.visibility,
+          collectionIds: selectedCollectionIds,
+          onStage: (filename, stage, index) => {
               const message = formatUploadProgressMessage({
                 stage,
-                filename: file.name,
+              filename,
                 index,
                 totalFiles: files.length,
               });
               setStatus(message);
-              updateResult(file.name, { status: "working", message });
+            updateResult(filename, { status: "working", message });
             },
-            onStageSuccess: (stage) => {
+          onStageSuccess: (filename, stage) => {
               toast.success(
-                formatUploadSuccessMessage({ filename: file.name, stage }),
+              formatUploadSuccessMessage({ filename, stage }),
               );
             },
           });
-          nextResults.push(result);
-          updateResult(file.name, { status: "done", message: "Ready" });
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "Upload failed.";
-          toast.error(`${file.name}: ${message}`);
-          nextResults.push({
+        nextResults.push(...uploadResults);
+        for (const result of uploadResults) {
+          updateResult(result.filename, { status: "done", message: "Ready" });
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Upload failed.";
+        toast.error(message);
+        nextResults.push(
+          ...files.map((file) => ({
             filename: file.name,
-            status: "failed",
+            status: "failed" as const,
             message,
-          });
+          })),
+        );
+        for (const file of files) {
           updateResult(file.name, { status: "failed", message });
         }
       }
@@ -245,6 +260,9 @@ export default function UploadPageClient() {
 
       if (failedCount === 0) {
         setSelectedFiles([]);
+        setSelectedCollectionIds([]);
+        setSelectedTags([]);
+        setRepresentativeIndex(0);
         reset(UPLOAD_FORM_DEFAULT_VALUES);
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
@@ -318,7 +336,7 @@ export default function UploadPageClient() {
 
         {selectedFiles.length > 0 ? (
           <ul className="upload-preview-grid" aria-label="Selected images">
-            {selectedFiles.map((item) => (
+            {selectedFiles.map((item, index) => (
               <li
                 key={`${item.file.name}-${item.file.size}-${item.file.lastModified}`}
                 data-valid={item.valid}
@@ -334,6 +352,15 @@ export default function UploadPageClient() {
                   <span>
                     {formatFileSize(item.file.size)} · {item.message}
                   </span>
+                  <label className="representative-choice">
+                    <input
+                      checked={representativeIndex === index}
+                      name="representativeIndex"
+                      onChange={() => setRepresentativeIndex(index)}
+                      type="radio"
+                    />
+                    Representative
+                  </label>
                 </div>
               </li>
             ))}
@@ -382,6 +409,52 @@ export default function UploadPageClient() {
             )}
           />
         </label>
+        {availableTags.length > 0 ? (
+          <details className="check-menu">
+            <summary>Existing tags ({selectedTags.length})</summary>
+            <div>
+              {availableTags.map((tag) => (
+                <label key={tag.id}>
+                  <input
+                    checked={selectedTags.includes(tag.name)}
+                    onChange={(event) => {
+                      setSelectedTags((current) =>
+                        event.currentTarget.checked
+                          ? [...current, tag.name]
+                          : current.filter((name) => name !== tag.name),
+                      );
+                    }}
+                    type="checkbox"
+                  />
+                  <span>{tag.name}</span>
+                </label>
+              ))}
+            </div>
+          </details>
+        ) : null}
+        {collections.length > 0 ? (
+          <fieldset className="visibility-control">
+            <legend>Collections</legend>
+            <div>
+              {collections.map((collection) => (
+                <label key={collection.id}>
+                  <input
+                    checked={selectedCollectionIds.includes(collection.id)}
+                    onChange={(event) => {
+                      setSelectedCollectionIds((current) =>
+                        event.currentTarget.checked
+                          ? [...current, collection.id]
+                          : current.filter((id) => id !== collection.id),
+                      );
+                    }}
+                    type="checkbox"
+                  />
+                  <span>{collection.title}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
         <fieldset className="visibility-control">
           <legend>Visibility</legend>
           <Controller

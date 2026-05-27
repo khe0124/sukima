@@ -201,6 +201,55 @@ a {
   font-size: 0.76rem;
 }
 
+.representative-choice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--foreground);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.representative-choice input {
+  width: auto;
+  accent-color: var(--accent);
+}
+
+.check-menu {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 10px 12px;
+}
+
+.check-menu summary {
+  cursor: pointer;
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+.check-menu > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.check-menu label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 7px 9px;
+}
+
+.check-menu input {
+  width: auto;
+  accent-color: var(--accent);
+}
+
 .visibility-control {
   display: grid;
   gap: 8px;
@@ -441,6 +490,77 @@ a {
   color: var(--muted);
 }
 
+.photo-selection {
+  display: grid;
+  gap: 10px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.photo-selection legend {
+  color: var(--foreground);
+  font-weight: 650;
+}
+
+.photo-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.photo-selection-item {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  padding: 8px;
+}
+
+.photo-selection-item[data-selected="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 92%);
+}
+
+.photo-selection-item input {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.photo-selection-item img,
+.photo-selection-placeholder {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 4px;
+  background: var(--line);
+  object-fit: cover;
+}
+
+.photo-selection-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.photo-selection-item span:last-child {
+  min-width: 0;
+  color: var(--foreground);
+  font-size: 0.86rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
 .photo-detail {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
@@ -461,6 +581,19 @@ a {
 
 .photo-meta {
   align-self: start;
+}
+
+.detail-asset-grid {
+  display: grid;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.detail-asset-grid img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--line);
 }
 
 .tag-list {

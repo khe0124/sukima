@@ -1,10 +1,13 @@
 "use client";
 
+import React from "react";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { CollectionListItem } from "@/server/collections";
 import type { PhotoListItem } from "@/types/photo";
+
+import { PhotoSelectionGrid } from "../../PhotoSelectionGrid";
 
 export function EditCollectionForm({
   collection,
@@ -17,6 +20,7 @@ export function EditCollectionForm({
 }) {
   const router = useRouter();
   const [status, setStatus] = useState("Ready");
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState(photoIds);
 
   async function saveCollection(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,14 +44,10 @@ export function EditCollectionForm({
       return;
     }
 
-    const ids = String(form.get("photoIds") || "")
-      .split(/\r?\n/)
-      .map((id) => id.trim())
-      .filter(Boolean);
     const photoResponse = await fetch(`/api/collections/${collection.id}/photos`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ photoIds: ids })
+      body: JSON.stringify({ photoIds: selectedPhotoIds })
     });
 
     if (!photoResponse.ok) {
@@ -90,10 +90,7 @@ export function EditCollectionForm({
           ))}
         </select>
       </label>
-      <label>
-        Photo IDs
-        <textarea name="photoIds" rows={8} defaultValue={photoIds.join("\n")} />
-      </label>
+      <PhotoSelectionGrid photos={photos} selectedPhotoIds={selectedPhotoIds} onChange={setSelectedPhotoIds} />
       <button type="submit">Save</button>
       <p role="status">{status}</p>
     </form>

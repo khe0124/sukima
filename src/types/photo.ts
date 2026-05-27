@@ -17,4 +17,20 @@ export type PhotoListItem = {
   takenAt: string | null;
   uploadedAt?: string | null;
   tags: string[];
+  collectionIds?: string[];
+  assets?: PhotoAssetListItem[];
+};
+
+export type PhotoAssetListItem = {
+  id: string;
+  photoId: string;
+  storageKeyOriginal?: string;
+  thumbnailUrl: string | null;
+  mediumUrl: string | null;
+  largeUrl: string | null;
+  blurUrl: string | null;
+  width: number | null;
+  height: number | null;
+  sortOrder: number;
+  isPrimary: boolean;
 };

@@ -1,17 +1,33 @@
 "use client";
 
+import React from "react";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { CollectionListItem } from "@/server/collections";
+import type { PhotoListItem } from "@/types/photo";
 
-export function CollectionManager({ collections }: { collections: CollectionListItem[] }) {
+import { PhotoSelectionGrid } from "./PhotoSelectionGrid";
+
+type CreatedCollection = {
+  id: string;
+};
+
+export function CollectionManager({
+  collections,
+  photos
+}: {
+  collections: CollectionListItem[];
+  photos: PhotoListItem[];
+}) {
   const router = useRouter();
   const [status, setStatus] = useState("Ready");
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
 
   async function createCollection(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
 
     setStatus("Creating collection...");
     const response = await fetch("/api/collections", {
@@ -30,7 +46,21 @@ export function CollectionManager({ collections }: { collections: CollectionList
       return;
     }
 
-    event.currentTarget.reset();
+    const collection = (await response.json()) as CreatedCollection;
+    const photoResponse = await fetch(`/api/collections/${collection.id}/photos`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ photoIds: selectedPhotoIds })
+    });
+
+    if (!photoResponse.ok) {
+      const error = await photoResponse.json();
+      setStatus(error.error || "Collection photos save failed.");
+      return;
+    }
+
+    formElement.reset();
+    setSelectedPhotoIds([]);
     setStatus("Collection created.");
     router.refresh();
   }
@@ -71,6 +101,7 @@ export function CollectionManager({ collections }: { collections: CollectionList
             <option value="draft">Draft</option>
           </select>
         </label>
+        <PhotoSelectionGrid photos={photos} selectedPhotoIds={selectedPhotoIds} onChange={setSelectedPhotoIds} />
         <button type="submit">Create</button>
       </form>
 
