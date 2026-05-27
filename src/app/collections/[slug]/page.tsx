@@ -1,7 +1,6 @@
-/* eslint-disable @next/next/no-img-element */
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ViewedPhotoTile } from "@/app/archive/ViewedPhoto";
 import { getPublicCollectionBySlug } from "@/server/collections";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +13,7 @@ export default async function CollectionDetailPage({ params }: { params: { slug:
   }
 
   return (
-    <main className="shell archive-shell">
+    <main className="shell w-[min(1180px,calc(100%_-_32px))]">
       <section className="page-heading">
         <p className="eyebrow">Collection</p>
         <h1>{result.collection.title}</h1>
@@ -23,24 +22,18 @@ export default async function CollectionDetailPage({ params }: { params: { slug:
       </section>
 
       {result.photos.length > 0 ? (
-        <div className="photo-grid">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-[14px]">
           {result.photos.map((photo) => {
             const imageUrl = photo.thumbnailUrl || photo.mediumUrl || photo.largeUrl;
 
             return (
-              <Link className="photo-tile" href={photo.slug ? `/archive/${photo.slug}` : "#"} key={photo.id}>
-                {imageUrl ? (
-                  <img
-                    alt={photo.title || "Archived photo"}
-                    height={photo.height || 900}
-                    src={imageUrl}
-                    width={photo.width || 1200}
-                  />
-                ) : (
-                  <span className="photo-placeholder">No image</span>
-                )}
-                <span className="photo-caption">{photo.title || "Untitled"}</span>
-              </Link>
+              <ViewedPhotoTile
+                href={photo.slug ? `/archive/${photo.slug}` : "#"}
+                imageUrl={imageUrl}
+                key={photo.id}
+                photo={photo}
+                showTags={false}
+              />
             );
           })}
         </div>

@@ -3,10 +3,12 @@ import Link from "next/link";
 
 import { getPhotos } from "@/server/photos";
 
+import { ViewedPhotoTile } from "./ViewedPhoto";
+
 export const dynamic = "force-dynamic";
 
 export default async function ArchivePage({
-  searchParams
+  searchParams,
 }: {
   searchParams: { cursor?: string; tag?: string };
 }) {
@@ -14,20 +16,20 @@ export default async function ArchivePage({
   const photos = await getPhotos({
     limit: "30",
     cursor: searchParams.cursor ?? null,
-    tag: activeTag || null
+    tag: activeTag || null,
   });
   const nextHref = photos.nextCursor
     ? `/archive?${new URLSearchParams({
         ...(activeTag ? { tag: activeTag } : {}),
-        cursor: photos.nextCursor
+        cursor: photos.nextCursor,
       }).toString()}`
     : "";
 
   return (
-    <main className="shell archive-shell">
+    <main className="shell w-[min(1180px,calc(100%_-_32px))]">
       <section className="page-heading">
         <p className="eyebrow">Archive</p>
-        <h1>{activeTag ? `#${activeTag}` : "Photos"}</h1>
+        {/* <h1 className="text-base">{activeTag ? `#${activeTag}` : "Photos"}</h1> */}
         <p>A public selection from the archive.</p>
         <p>
           <Link href="/collections">View collections</Link>
@@ -40,32 +42,14 @@ export default async function ArchivePage({
       </section>
 
       {photos.items.length > 0 ? (
-        <div className="photo-grid">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-[14px]">
           {photos.items.map((photo) => {
             const href = photo.slug ? `/archive/${photo.slug}` : "#";
-            const imageUrl = photo.thumbnailUrl || photo.mediumUrl || photo.largeUrl;
+            const imageUrl =
+              photo.thumbnailUrl || photo.mediumUrl || photo.largeUrl;
 
             return (
-              <Link className="photo-tile" href={href} key={photo.id}>
-                {imageUrl ? (
-                  <img
-                    alt={photo.title || "Archived photo"}
-                    height={photo.height || 900}
-                    src={imageUrl}
-                    width={photo.width || 1200}
-                  />
-                ) : (
-                  <span className="photo-placeholder">No image</span>
-                )}
-                <span className="photo-caption">{photo.title || "Untitled"}</span>
-                {photo.tags.length > 0 ? (
-                  <span className="photo-tags">
-                    {photo.tags.slice(0, 3).map((tag) => (
-                      <span key={tag}>#{tag}</span>
-                    ))}
-                  </span>
-                ) : null}
-              </Link>
+              <ViewedPhotoTile href={href} imageUrl={imageUrl} key={photo.id} photo={photo} />
             );
           })}
         </div>
