@@ -2,6 +2,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 
 import {
   buildCanonicalUrl,
@@ -15,13 +16,14 @@ import { getPhotoBySlugWithAssets } from "@/server/photos";
 import { ViewedPhotoMarker } from "../ViewedPhoto";
 
 export const dynamic = "force-dynamic";
+const getCachedPhotoBySlugWithAssets = cache(getPhotoBySlugWithAssets);
 
 type PhotoDetailPageProps = {
   params: { slug: string };
 };
 
 export async function generateMetadata({ params }: PhotoDetailPageProps): Promise<Metadata> {
-  const photo = await getPhotoBySlugWithAssets(params.slug);
+  const photo = await getCachedPhotoBySlugWithAssets(params.slug);
 
   if (!photo) {
     return {
@@ -54,8 +56,6 @@ export async function generateMetadata({ params }: PhotoDetailPageProps): Promis
         ? [
             {
               url: imageUrl,
-              width: photo.width || 1200,
-              height: photo.height || 900,
               alt: title
             }
           ]
@@ -73,7 +73,7 @@ export async function generateMetadata({ params }: PhotoDetailPageProps): Promis
 export default async function PhotoDetailPage({
   params,
 }: PhotoDetailPageProps) {
-  const photo = await getPhotoBySlugWithAssets(params.slug);
+  const photo = await getCachedPhotoBySlugWithAssets(params.slug);
 
   if (!photo) {
     notFound();
@@ -88,6 +88,7 @@ export default async function PhotoDetailPage({
     width: photo.width,
     height: photo.height,
     takenAt: photo.takenAt,
+    uploadedAt: photo.uploadedAt,
     tags: photo.tags
   });
 

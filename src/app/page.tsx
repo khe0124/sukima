@@ -1,10 +1,19 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
-import { buildCanonicalUrl, getDefaultSeoDescription, getSeoTitle, serializeJsonLd } from "@/lib/seo";
+import {
+  buildCanonicalUrl,
+  buildWebsiteStructuredData,
+  getDefaultSeoDescription,
+  getSeoTitle,
+  getSiteName,
+  serializeJsonLd
+} from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: getSeoTitle(),
+  title: {
+    absolute: getSiteName()
+  },
   description: getDefaultSeoDescription(),
   alternates: {
     canonical: "/"
@@ -18,18 +27,7 @@ export const metadata: Metadata = {
 };
 
 export default function HomePage() {
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "Sukima Photo Archive",
-    url: buildCanonicalUrl("/"),
-    description: getDefaultSeoDescription(),
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${buildCanonicalUrl("/archive")}?tag={search_term_string}`,
-      "query-input": "required name=search_term_string"
-    }
-  };
+  const structuredData = buildWebsiteStructuredData();
 
   return (
     <main className="shell">

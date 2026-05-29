@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 
 import { ViewedPhotoTile } from "@/app/archive/ViewedPhoto";
 import {
@@ -12,6 +13,7 @@ import {
 import { getPublicCollectionBySlug } from "@/server/collections";
 
 export const dynamic = "force-dynamic";
+const getCachedPublicCollectionBySlug = cache(getPublicCollectionBySlug);
 
 type CollectionDetailPageProps = {
   params: { slug: string };
@@ -20,7 +22,7 @@ type CollectionDetailPageProps = {
 export async function generateMetadata({
   params
 }: CollectionDetailPageProps): Promise<Metadata> {
-  const result = await getPublicCollectionBySlug(params.slug);
+  const result = await getCachedPublicCollectionBySlug(params.slug);
 
   if (!result) {
     return {
@@ -75,7 +77,7 @@ export async function generateMetadata({
 }
 
 export default async function CollectionDetailPage({ params }: CollectionDetailPageProps) {
-  const result = await getPublicCollectionBySlug(params.slug);
+  const result = await getCachedPublicCollectionBySlug(params.slug);
 
   if (!result) {
     notFound();

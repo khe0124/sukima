@@ -12,6 +12,7 @@ type PhotoStructuredDataInput = {
   width: number | null;
   height: number | null;
   takenAt: string | null;
+  uploadedAt?: string | null;
   tags: string[];
 };
 
@@ -38,6 +39,10 @@ export function getSiteUrl() {
   const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
 
   if (!configuredUrl) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("NEXT_PUBLIC_SITE_URL must be a valid absolute URL.");
+    }
+
     return DEFAULT_SITE_URL;
   }
 
@@ -45,6 +50,10 @@ export function getSiteUrl() {
     const url = new URL(configuredUrl);
     return url.origin;
   } catch {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("NEXT_PUBLIC_SITE_URL must be a valid absolute URL.");
+    }
+
     return DEFAULT_SITE_URL;
   }
 }
@@ -86,7 +95,7 @@ export function buildPhotoStructuredData(photo: PhotoStructuredDataInput) {
     contentUrl: photo.imageUrl,
     thumbnailUrl: photo.imageUrl,
     datePublished: photo.takenAt ?? undefined,
-    uploadDate: photo.takenAt ?? undefined,
+    uploadDate: photo.uploadedAt ?? undefined,
     keywords: photo.tags
   };
 
@@ -96,6 +105,16 @@ export function buildPhotoStructuredData(photo: PhotoStructuredDataInput) {
   }
 
   return withoutEmptyValues(data);
+}
+
+export function buildWebsiteStructuredData() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: buildCanonicalUrl("/"),
+    description: DEFAULT_DESCRIPTION
+  };
 }
 
 export function buildCollectionStructuredData(collection: CollectionStructuredDataInput) {

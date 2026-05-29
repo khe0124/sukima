@@ -55,12 +55,12 @@ type CollectionPhotoRow = {
   taken_at: Date | null;
   tags: string[] | null;
 };
+
 type CollectionSitemapRow = {
   slug: string;
   updated_at: Date | null;
   created_at: Date | null;
 };
-
 
 export function parseCollectionRequest(input: unknown) {
   return collectionRequestSchema.parse(input);
@@ -104,9 +104,8 @@ export function buildPublicCollectionWhere() {
   return "c.visibility = 'public'";
 }
 
-export async function getCollections() {
-  const result = await query<CollectionRow>(
-    `SELECT
+export function buildAdminCollectionsQuery() {
+  return `SELECT
        c.id,
        c.title,
        c.slug,
@@ -119,9 +118,52 @@ export async function getCollections() {
      FROM collections c
      LEFT JOIN photos cover ON cover.id = c.cover_photo_id AND cover.visibility = 'public' AND cover.status = 'ready'
      LEFT JOIN collection_photos cp ON cp.collection_id = c.id
-     GROUP BY c.id
-     ORDER BY c.created_at DESC`
-  );
+     GROUP BY c.id, cover.storage_key_thumbnail, cover.storage_key_medium
+     ORDER BY c.created_at DESC`;
+}
+
+export function buildPublicCollectionsQuery() {
+  return `SELECT
+       c.id,
+       c.title,
+       c.slug,
+       c.description,
+       c.visibility,
+       c.cover_photo_id,
+       cover.storage_key_thumbnail AS cover_storage_key_thumbnail,
+       cover.storage_key_medium AS cover_storage_key_medium,
+       COUNT(public_photos.id) AS photo_count
+     FROM collections c
+     LEFT JOIN photos cover ON cover.id = c.cover_photo_id AND cover.visibility = 'public' AND cover.status = 'ready'
+     LEFT JOIN collection_photos cp ON cp.collection_id = c.id
+     LEFT JOIN photos public_photos ON public_photos.id = cp.photo_id AND public_photos.visibility = 'public' AND public_photos.status = 'ready'
+     WHERE ${buildPublicCollectionWhere()}
+     GROUP BY c.id, cover.storage_key_thumbnail, cover.storage_key_medium
+     ORDER BY c.created_at DESC`;
+}
+
+export function buildPublicCollectionBySlugQuery() {
+  return `SELECT
+       c.id,
+       c.title,
+       c.slug,
+       c.description,
+       c.visibility,
+       c.cover_photo_id,
+       cover.storage_key_thumbnail AS cover_storage_key_thumbnail,
+       cover.storage_key_medium AS cover_storage_key_medium,
+       COUNT(public_photos.id) AS photo_count
+     FROM collections c
+     LEFT JOIN photos cover ON cover.id = c.cover_photo_id AND cover.visibility = 'public' AND cover.status = 'ready'
+     LEFT JOIN collection_photos cp ON cp.collection_id = c.id
+     LEFT JOIN photos public_photos ON public_photos.id = cp.photo_id AND public_photos.visibility = 'public' AND public_photos.status = 'ready'
+     WHERE ${buildPublicCollectionWhere()} AND c.slug = $1
+     GROUP BY c.id, cover.storage_key_thumbnail, cover.storage_key_medium
+     LIMIT 1`;
+}
+
+export async function getCollections() {
+  const result = await query<CollectionRow>(buildAdminCollectionsQuery());
 
   return result.rows.map(mapCollectionRow);
 }
@@ -163,27 +205,11 @@ export async function getCollectionPhotoIds(collectionId: string) {
 }
 
 export async function getPublicCollections() {
-  const result = await query<CollectionRow>(
-    `SELECT
-       c.id,
-       c.title,
-       c.slug,
-       c.description,
-       c.visibility,
-       c.cover_photo_id,
-       cover.storage_key_thumbnail AS cover_storage_key_thumbnail,
-       cover.storage_key_medium AS cover_storage_key_medium,
-       COUNT(cp.photo_id) AS photo_count
-     FROM collections c
-     LEFT JOIN photos cover ON cover.id = c.cover_photo_id AND cover.visibility = 'public' AND cover.status = 'ready'
-     LEFT JOIN collection_photos cp ON cp.collection_id = c.id
-     WHERE ${buildPublicCollectionWhere()}
-     GROUP BY c.id, cover.storage_key_thumbnail, cover.storage_key_medium
-     ORDER BY c.created_at DESC`
-  );
+  const result = await query<CollectionRow>(buildPublicCollectionsQuery());
 
   return result.rows.map(mapCollectionRow);
 }
+
 export async function getPublicCollectionSitemapEntries() {
   const result = await query<CollectionSitemapRow>(
     `SELECT slug, updated_at, created_at
@@ -198,27 +224,8 @@ export async function getPublicCollectionSitemapEntries() {
   }));
 }
 
-
 export async function getPublicCollectionBySlug(slug: string) {
-  const collectionResult = await query<CollectionRow>(
-    `SELECT
-       c.id,
-       c.title,
-       c.slug,
-       c.description,
-       c.visibility,
-       c.cover_photo_id,
-       cover.storage_key_thumbnail AS cover_storage_key_thumbnail,
-       cover.storage_key_medium AS cover_storage_key_medium,
-       COUNT(cp.photo_id) AS photo_count
-     FROM collections c
-     LEFT JOIN photos cover ON cover.id = c.cover_photo_id AND cover.visibility = 'public' AND cover.status = 'ready'
-     LEFT JOIN collection_photos cp ON cp.collection_id = c.id
-     WHERE ${buildPublicCollectionWhere()} AND c.slug = $1
-     GROUP BY c.id, cover.storage_key_thumbnail, cover.storage_key_medium
-     LIMIT 1`,
-    [slug]
-  );
+  const collectionResult = await query<CollectionRow>(buildPublicCollectionBySlugQuery(), [slug]);
   const collection = collectionResult.rows[0];
 
   if (!collection) return null;

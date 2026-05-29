@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   buildCanonicalUrl,
   buildCollectionStructuredData,
   buildPhotoStructuredData,
+  buildWebsiteStructuredData,
   getSiteUrl,
   getSeoDescription,
   getSeoTitle,
@@ -14,6 +15,7 @@ const originalSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
 describe("seo helpers", () => {
   afterEach(() => {
+    vi.unstubAllEnvs();
     process.env.NEXT_PUBLIC_SITE_URL = originalSiteUrl;
   });
 
@@ -25,6 +27,13 @@ describe("seo helpers", () => {
     process.env.NEXT_PUBLIC_SITE_URL = "";
 
     expect(getSiteUrl()).toBe("http://localhost:3000");
+  });
+
+  it("requires a configured site URL in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    process.env.NEXT_PUBLIC_SITE_URL = "";
+
+    expect(() => getSiteUrl()).toThrow("NEXT_PUBLIC_SITE_URL must be a valid absolute URL.");
   });
 
   it("builds canonical URLs without duplicate slashes", () => {
@@ -52,14 +61,22 @@ describe("seo helpers", () => {
       width: 1600,
       height: 1067,
       takenAt: "2026-05-18T20:13:00+09:00",
+      uploadedAt: "2026-05-20T09:00:00+09:00",
       tags: ["night", "street"]
     });
 
     expect(data["@type"]).toBe("ImageObject");
     expect(data.contentUrl).toBe("https://cdn.example.com/photos/rainy-night-large.webp");
+    expect(data.uploadDate).toBe("2026-05-20T09:00:00+09:00");
     expect(data.url).toBe("https://photos.example.com/archive/rainy-night-1234");
     expect(data.keywords).toEqual(["night", "street"]);
     expect(data).not.toHaveProperty("contentLocation");
+  });
+
+  it("builds website structured data without advertising unavailable search", () => {
+    process.env.NEXT_PUBLIC_SITE_URL = "https://photos.example.com";
+
+    expect(buildWebsiteStructuredData()).not.toHaveProperty("potentialAction");
   });
 
   it("builds collection structured data with item URLs", () => {
