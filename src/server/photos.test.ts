@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getCollectionMembershipChanges,
+  parseCreatePhotoAssetRequest,
   parseCreatePhotoRequest,
   parsePhotoListQuery,
   parseUpdatePhotoRequest
@@ -64,6 +65,33 @@ describe("parseCreatePhotoRequest", () => {
         ]
       })
     ).toThrow("Duplicate photo asset original key.");
+  });
+});
+
+describe("parseCreatePhotoAssetRequest", () => {
+  it("accepts a private original asset payload for an existing photo", () => {
+    expect(
+      parseCreatePhotoAssetRequest({
+        assetId: "660e8400-e29b-41d4-a716-446655440000",
+        storageKeyOriginal: "private/originals/2026/05/26/660e8400-e29b-41d4-a716-446655440000-original.jpg",
+        fileSize: 2048,
+        mimeType: "image/jpeg"
+      })
+    ).toEqual({
+      assetId: "660e8400-e29b-41d4-a716-446655440000",
+      storageKeyOriginal: "private/originals/2026/05/26/660e8400-e29b-41d4-a716-446655440000-original.jpg",
+      fileSize: 2048,
+      mimeType: "image/jpeg"
+    });
+  });
+
+  it("rejects public storage keys for added originals", () => {
+    expect(() =>
+      parseCreatePhotoAssetRequest({
+        assetId: "660e8400-e29b-41d4-a716-446655440000",
+        storageKeyOriginal: "public/photos/2026/05/26/660e8400-e29b-41d4-a716-446655440000-original.jpg"
+      })
+    ).toThrow();
   });
 });
 

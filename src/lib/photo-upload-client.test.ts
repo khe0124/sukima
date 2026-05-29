@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { uploadPhotoFile, uploadPhotoSet } from "./photo-upload-client";
+import { uploadPhotoAssets, uploadPhotoFile, uploadPhotoSet } from "./photo-upload-client";
 
 describe("uploadPhotoFile", () => {
   it("uses the expected presigned upload request sequence", async () => {
@@ -234,6 +234,63 @@ describe("uploadPhotoFile", () => {
         tags: [],
         visibility: "private",
         collectionIds: []
+      })
+    ).rejects.toThrow("Choose at least one image.");
+  });
+});
+
+describe("uploadPhotoAssets", () => {
+  it("uploads additional images to an existing photo and reprocesses it", async () => {
+    const calls: Array<{ url: string; init: RequestInit }> = [];
+    const fetcher = async (url: string, init: RequestInit = {}) => {
+      calls.push({ url, init });
+
+      if (url === "/api/photos/550e8400-e29b-41d4-a716-446655440000/assets/upload-url") {
+        return Response.json({
+          uploadUrl: "https://r2.example/asset-id",
+          assetId: "660e8400-e29b-41d4-a716-446655440000",
+          storageKeyOriginal: "private/originals/2026/05/26/660e8400-e29b-41d4-a716-446655440000-original.jpg"
+        });
+      }
+
+      return Response.json({ ok: true }, { status: init.method === "POST" ? 201 : 200 });
+    };
+
+    await uploadPhotoAssets({
+      photoId: "550e8400-e29b-41d4-a716-446655440000",
+      files: [
+        {
+          name: "detail.jpg",
+          type: "image/jpeg",
+          size: 300
+        } as File
+      ],
+      fetcher
+    });
+
+    expect(calls.map((call) => [call.url, call.init.method])).toEqual([
+      ["/api/photos/550e8400-e29b-41d4-a716-446655440000/assets/upload-url", "POST"],
+      ["https://r2.example/asset-id", "PUT"],
+      ["/api/photos/550e8400-e29b-41d4-a716-446655440000/assets", "POST"],
+      ["/api/photos/550e8400-e29b-41d4-a716-446655440000/process", "POST"]
+    ]);
+
+    const assetCall = calls.find(
+      (call) => call.url === "/api/photos/550e8400-e29b-41d4-a716-446655440000/assets"
+    );
+    expect(JSON.parse(String(assetCall?.init.body))).toEqual({
+      assetId: "660e8400-e29b-41d4-a716-446655440000",
+      storageKeyOriginal: "private/originals/2026/05/26/660e8400-e29b-41d4-a716-446655440000-original.jpg",
+      fileSize: 300,
+      mimeType: "image/jpeg"
+    });
+  });
+
+  it("throws a clear error when no additional files are selected", async () => {
+    await expect(
+      uploadPhotoAssets({
+        photoId: "550e8400-e29b-41d4-a716-446655440000",
+        files: []
       })
     ).rejects.toThrow("Choose at least one image.");
   });

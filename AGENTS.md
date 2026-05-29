@@ -689,6 +689,15 @@ photography-first
 not overly decorative
 ```
 
+Style implementation rules:
+
+```txt
+- Use Tailwind CSS for application styling.
+- Follow shadcn/ui component style conventions for UI primitives, spacing, variants, states, and accessibility patterns.
+- Prefer shadcn/ui-style composition and class naming patterns over one-off custom component styling.
+- Keep the final visual tone quiet, minimal, archive-like, and photography-first even when using shadcn/ui patterns.
+```
+
 Prioritize image viewing experience over UI complexity.
 
 ---

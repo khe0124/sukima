@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { getPool, query } from "@/lib/db";
 import { buildProcessedStorageKeys, generateProcessedImages } from "@/lib/image-processing";
-import { normalizePhotoListLimit, toPublicPhotoUrl } from "@/lib/photos";
+import { ALLOWED_IMAGE_TYPES, normalizePhotoListLimit, toPublicPhotoUrl } from "@/lib/photos";
 import { createOriginalDownloadUrl, readPrivateObject, writePublicObject } from "@/lib/r2";
 import { slugify } from "@/lib/slug";
 import type { PhotoAssetListItem, PhotoListItem } from "@/types/photo";
@@ -13,7 +13,7 @@ import type { PhotoAssetListItem, PhotoListItem } from "@/types/photo";
 const photoAssetInputSchema = z.object({
   storageKeyOriginal: z.string().startsWith("private/originals/"),
   fileSize: z.number().int().positive().optional(),
-  mimeType: z.string().optional(),
+  mimeType: z.enum(ALLOWED_IMAGE_TYPES).optional(),
   sortOrder: z.number().int().min(0).default(0),
   isPrimary: z.boolean().default(false)
 });
@@ -29,7 +29,7 @@ const createPhotoSchema = z
   visibility: z.enum(["private", "public", "unlisted", "draft"]).default("private"),
   fileSize: z.number().int().positive().optional(),
   mimeType: z.string().optional(),
-  assets: z.array(photoAssetInputSchema).max(20).default([]),
+  assets: z.array(photoAssetInputSchema).max(100).default([]),
   collectionIds: z.array(z.string().uuid()).max(20).default([])
   })
   .superRefine((photo, context) => {
@@ -75,8 +75,16 @@ const updatePhotoSchema = z.object({
   primaryAssetId: z.string().uuid().optional()
 });
 
+const createPhotoAssetSchema = z.object({
+  assetId: z.string().uuid(),
+  storageKeyOriginal: z.string().startsWith("private/originals/"),
+  fileSize: z.number().int().positive().optional(),
+  mimeType: z.enum(ALLOWED_IMAGE_TYPES).optional()
+});
+
 type CreatePhotoInput = z.infer<typeof createPhotoSchema>;
 type UpdatePhotoInput = z.infer<typeof updatePhotoSchema>;
+type CreatePhotoAssetInput = z.infer<typeof createPhotoAssetSchema>;
 
 type PhotoRow = {
   id: string;
@@ -207,6 +215,10 @@ export function parseUpdatePhotoRequest(input: unknown): UpdatePhotoInput {
     ...parsed,
     ...(parsed.tags ? { tags: normalizeTagNames(parsed.tags) } : {})
   };
+}
+
+export function parseCreatePhotoAssetRequest(input: unknown): CreatePhotoAssetInput {
+  return createPhotoAssetSchema.parse(input);
 }
 
 function normalizeTagNames(tags: string[]) {
@@ -770,6 +782,89 @@ export async function getPhotoAssets(photoId: string) {
   );
 
   return result.rows.map(mapPhotoAssetRow);
+}
+
+export async function createPhotoAsset(photoId: string, input: unknown) {
+  const parsed = parseCreatePhotoAssetRequest(input);
+  const client = await getPool().connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const photo = await client.query<{ id: string }>(
+      `SELECT id
+       FROM photos
+       WHERE id = $1 AND status <> 'deleted'
+       LIMIT 1`,
+      [photoId]
+    );
+
+    if (!photo.rows[0]) {
+      throw new Error("Photo not found.");
+    }
+
+    const duplicate = await client.query<{ id: string }>(
+      `SELECT id
+       FROM photo_assets
+       WHERE photo_id = $1 AND storage_key_original = $2
+       LIMIT 1`,
+      [photoId, parsed.storageKeyOriginal]
+    );
+
+    if (duplicate.rows[0]) {
+      throw new Error("Photo asset already exists.");
+    }
+
+    const result = await client.query<PhotoAssetRow>(
+      `INSERT INTO photo_assets (
+         id,
+         photo_id,
+         storage_key_original,
+         file_size,
+         mime_type,
+         sort_order,
+         is_primary
+       )
+       VALUES (
+         $1,
+         $2,
+         $3,
+         $4,
+         $5,
+         COALESCE((SELECT MAX(sort_order) + 1 FROM photo_assets WHERE photo_id = $2), 0),
+         FALSE
+       )
+       RETURNING
+         id,
+         photo_id,
+         storage_key_original,
+         storage_key_thumbnail,
+         storage_key_medium,
+         storage_key_large,
+         storage_key_blur,
+         width,
+         height,
+         sort_order,
+         is_primary`,
+      [
+        parsed.assetId,
+        photoId,
+        parsed.storageKeyOriginal,
+        parsed.fileSize || null,
+        parsed.mimeType || null
+      ]
+    );
+
+    await client.query("UPDATE photos SET updated_at = NOW() WHERE id = $1", [photoId]);
+    await client.query("COMMIT");
+
+    return mapPhotoAssetRow(result.rows[0]);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function getPhotoCollectionIds(photoId: string) {

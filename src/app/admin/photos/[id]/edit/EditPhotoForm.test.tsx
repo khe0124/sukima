@@ -124,4 +124,45 @@ describe("EditPhotoForm", () => {
 
     expect(screen.getByRole("radio", { name: "Representative image 2" })).toBeDisabled();
   });
+
+  it("uploads additional images for the current photo from the edit form", async () => {
+    const fetchMock = vi.fn(async (url: string, init: RequestInit = {}) => {
+      if (url === "/api/photos/550e8400-e29b-41d4-a716-446655440000/assets/upload-url") {
+        return Response.json({
+          uploadUrl: "https://r2.example/asset-id",
+          assetId: "770e8400-e29b-41d4-a716-446655440000",
+          storageKeyOriginal: "private/originals/2026/05/27/770e8400-e29b-41d4-a716-446655440000-original.jpg",
+        });
+      }
+
+      return Response.json({ ok: true }, { status: init.method === "POST" ? 201 : 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<EditPhotoForm photo={photo} />);
+
+    const file = new File(["image"], "extra.jpg", { type: "image/jpeg" });
+    fireEvent.change(screen.getByLabelText(/Select additional images/), {
+      target: {
+        files: [file],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Upload additional images" }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/photos/550e8400-e29b-41d4-a716-446655440000/assets",
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining('"assetId":"770e8400-e29b-41d4-a716-446655440000"'),
+        }),
+      );
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/photos/550e8400-e29b-41d4-a716-446655440000/process",
+      expect.objectContaining({
+        method: "POST",
+      }),
+    );
+  });
 });

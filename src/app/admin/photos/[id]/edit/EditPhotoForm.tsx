@@ -1,9 +1,17 @@
 "use client";
 
 import React from "react";
-import { FormEvent, useState } from "react";
+import { ChangeEvent, FormEvent, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { uploadPhotoAssets } from "@/lib/photo-upload-client";
+import {
+  formatFileSize,
+  formatUploadProgressMessage,
+  formatUploadSuccessMessage,
+  getUploadValidationSummary,
+  validateUploadFiles
+} from "@/lib/upload-form";
 import type { CollectionListItem } from "@/server/collections";
 import type { TagListItem } from "@/server/tags";
 import type { PhotoListItem } from "@/types/photo";
@@ -52,15 +60,26 @@ export function EditPhotoForm({
   const [status, setStatus] = useState("Ready");
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>(photo.collectionIds ?? []);
   const [selectedTags, setSelectedTags] = useState<string[]>(photo.tags);
+  const [assetFiles, setAssetFiles] = useState<File[]>([]);
+  const [isUploadingAssets, setIsUploadingAssets] = useState(false);
+  const assetInputRef = useRef<HTMLInputElement>(null);
   const galleryItems = getRepresentativeGalleryItems(photo);
   const initialPrimaryAssetId = galleryItems.find((item) => item.isPrimary)?.id ?? galleryItems[0]?.id ?? photo.id;
   const [selectedPrimaryAssetId, setSelectedPrimaryAssetId] = useState(initialPrimaryAssetId);
   const selectedGalleryItem = galleryItems.find((item) => item.id === selectedPrimaryAssetId);
+  const assetValidations = useMemo(() => validateUploadFiles(assetFiles), [assetFiles]);
+  const assetValidationSummary = assetFiles.length > 0 ? getUploadValidationSummary(assetValidations) : null;
   const canChangeRepresentative = Boolean(photo.assets && photo.assets.some((asset) => asset.thumbnailUrl || asset.mediumUrl || asset.largeUrl));
   const shouldSubmitRepresentative =
     canChangeRepresentative &&
     selectedPrimaryAssetId !== initialPrimaryAssetId &&
     Boolean(selectedGalleryItem?.imageUrl);
+
+  function handleAssetFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.currentTarget.files ?? []);
+    setAssetFiles(files);
+    setStatus(files.length > 0 ? "Additional images selected." : "Ready");
+  }
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -116,6 +135,52 @@ export function EditPhotoForm({
 
     setStatus("Processed.");
     router.refresh();
+  }
+
+  async function handleUploadAssets() {
+    if (assetFiles.length === 0) {
+      setStatus("Choose at least one image.");
+      return;
+    }
+
+    if (!assetValidationSummary?.valid) {
+      setStatus(assetValidationSummary?.message ?? "Check selected images.");
+      return;
+    }
+
+    setIsUploadingAssets(true);
+    setStatus("Preparing additional image upload...");
+
+    try {
+      await uploadPhotoAssets({
+        photoId: photo.id,
+        files: assetFiles,
+        onStage: (filename, stage, index) => {
+          setStatus(
+            formatUploadProgressMessage({
+              stage,
+              filename,
+              index,
+              totalFiles: assetFiles.length
+            })
+          );
+        },
+        onStageSuccess: (filename, stage) => {
+          setStatus(formatUploadSuccessMessage({ stage, filename }));
+        }
+      });
+
+      setAssetFiles([]);
+      if (assetInputRef.current) {
+        assetInputRef.current.value = "";
+      }
+      setStatus("Additional images uploaded.");
+      router.refresh();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Additional image upload failed.");
+    } finally {
+      setIsUploadingAssets(false);
+    }
   }
 
   async function handleDownload() {
@@ -193,6 +258,71 @@ export function EditPhotoForm({
           })}
         </div>
       </fieldset>
+      <section className="asset-upload-panel" aria-labelledby="asset-upload-title">
+        <div>
+          <h2 id="asset-upload-title">Add images</h2>
+          <p className="field-help">
+            Add more images to this photo set. Originals are uploaded directly to private R2 storage, then processed for the gallery.
+          </p>
+        </div>
+        <label className="dropzone">
+          <strong>Select additional images</strong>
+          <small>JPEG, PNG, WebP, HEIC, or HEIF. Up to 10MB each.</small>
+          <input
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            multiple
+            onChange={handleAssetFileChange}
+            ref={assetInputRef}
+            type="file"
+          />
+        </label>
+        {assetFiles.length > 0 ? (
+          <div className="asset-upload-review">
+            <p data-tone={assetValidationSummary?.tone ?? "success"}>{assetValidationSummary?.message}</p>
+            <ul>
+              {assetFiles.map((file, index) => {
+                const validation = assetValidations[index];
+
+                return (
+                  <li data-valid={validation?.valid ?? true} key={`${file.name}-${file.size}-${index}`}>
+                    <span>{file.name}</span>
+                    <small>
+                      {formatFileSize(file.size)}
+                      {validation && !validation.valid ? ` - ${validation.message}` : ""}
+                    </small>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null}
+        <div className="form-actions">
+          <button
+            disabled={isUploadingAssets || assetFiles.length === 0 || assetValidationSummary?.valid === false}
+            type="button"
+            onClick={handleUploadAssets}
+            aria-busy={isUploadingAssets}
+          >
+            Upload additional images
+          </button>
+          {assetFiles.length > 0 ? (
+            <button
+              className="secondary-button"
+              disabled={isUploadingAssets}
+              type="button"
+              onClick={() => {
+                setAssetFiles([]);
+                if (assetInputRef.current) {
+                  assetInputRef.current.value = "";
+                }
+                setStatus("Ready");
+              }}
+            >
+              Clear selection
+            </button>
+          ) : null}
+        </div>
+      </section>
       <label className="field-group">
         <span className="field-label">Title</span>
         <input name="title" type="text" maxLength={160} defaultValue={photo.title ?? ""} />

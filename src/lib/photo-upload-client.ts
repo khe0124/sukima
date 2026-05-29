@@ -6,6 +6,12 @@ type UploadUrlResponse = {
   storageKeyOriginal: string;
 };
 
+type AssetUploadUrlResponse = {
+  uploadUrl: string;
+  assetId: string;
+  storageKeyOriginal: string;
+};
+
 type UploadResult = {
   filename: string;
   status: "done";
@@ -276,6 +282,96 @@ export async function uploadPhotoSet({
     throw new Error(await readJsonError(processResponse, "Image processing failed."));
   }
   onStageSuccess?.(primary.file.name, "processing");
+
+  return files.map((file) => ({
+    filename: file.name,
+    status: "done",
+    message: "Ready"
+  }));
+}
+
+export async function uploadPhotoAssets({
+  photoId,
+  files,
+  onStage,
+  onStageSuccess,
+  fetcher = fetch
+}: {
+  photoId: string;
+  files: File[];
+  onStage?: (filename: string, stage: UploadProgressStage, index: number) => void;
+  onStageSuccess?: (filename: string, stage: UploadProgressStage) => void;
+  fetcher?: Fetcher;
+}): Promise<UploadResult[]> {
+  if (files.length === 0) {
+    throw new Error("Choose at least one image.");
+  }
+
+  const jsonHeaders = {
+    "content-type": "application/json"
+  };
+
+  for (let index = 0; index < files.length; index += 1) {
+    const file = files[index];
+    onStage?.(file.name, "upload-url", index);
+    const uploadUrlResponse = await fetcher(`/api/photos/${photoId}/assets/upload-url`, {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify({
+        filename: file.name,
+        contentType: file.type,
+        size: file.size
+      })
+    });
+
+    if (!uploadUrlResponse.ok) {
+      throw new Error(await readJsonError(uploadUrlResponse, "Upload URL request failed."));
+    }
+
+    const upload = (await uploadUrlResponse.json()) as AssetUploadUrlResponse;
+    onStageSuccess?.(file.name, "upload-url");
+
+    onStage?.(file.name, "r2-upload", index);
+    const r2Response = await fetcher(upload.uploadUrl, {
+      method: "PUT",
+      headers: {
+        "content-type": file.type
+      },
+      body: file
+    });
+
+    if (!r2Response.ok) {
+      throw new Error(await readR2UploadError(r2Response));
+    }
+    onStageSuccess?.(file.name, "r2-upload");
+
+    onStage?.(file.name, "metadata", index);
+    const assetResponse = await fetcher(`/api/photos/${photoId}/assets`, {
+      method: "POST",
+      headers: jsonHeaders,
+      body: JSON.stringify({
+        assetId: upload.assetId,
+        storageKeyOriginal: upload.storageKeyOriginal,
+        fileSize: file.size,
+        mimeType: file.type
+      })
+    });
+
+    if (!assetResponse.ok) {
+      throw new Error(await readJsonError(assetResponse, "Asset metadata save failed."));
+    }
+    onStageSuccess?.(file.name, "metadata");
+  }
+
+  onStage?.(files[0].name, "processing", 0);
+  const processResponse = await fetcher(`/api/photos/${photoId}/process`, {
+    method: "POST"
+  });
+
+  if (!processResponse.ok) {
+    throw new Error(await readJsonError(processResponse, "Image processing failed."));
+  }
+  onStageSuccess?.(files[0].name, "processing");
 
   return files.map((file) => ({
     filename: file.name,
