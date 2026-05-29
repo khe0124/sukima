@@ -69,9 +69,10 @@ const updatePhotoSchema = z.object({
   title: z.string().trim().max(160).optional(),
   description: z.string().trim().max(2000).optional(),
   takenAt: z.string().datetime({ offset: true }).optional().or(z.literal("")),
-  tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
+  tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
   visibility: z.enum(["private", "public", "unlisted", "draft"]).optional(),
-  collectionIds: z.array(z.string().uuid()).max(20).optional()
+  collectionIds: z.array(z.string().uuid()).max(20).optional(),
+  primaryAssetId: z.string().uuid().optional()
 });
 
 type CreatePhotoInput = z.infer<typeof createPhotoSchema>;
@@ -125,6 +126,71 @@ type PhotoAssetRow = {
   is_primary: boolean;
 };
 
+type PrimaryPhotoAssetRow = {
+  id: string;
+  storage_key_original: string;
+  storage_key_thumbnail: string | null;
+  storage_key_medium: string | null;
+  storage_key_large: string | null;
+  storage_key_blur: string | null;
+  width: number | null;
+  height: number | null;
+  file_size: number | null;
+  mime_type: string | null;
+};
+
+const photoStatuses = ["pending", "uploading", "processing", "ready", "failed"] as const;
+const photoVisibilities = ["private", "public", "unlisted", "draft"] as const;
+const photoListSorts = ["newest", "oldest", "taken-newest", "taken-oldest", "title-asc", "title-desc"] as const;
+
+type PhotoListStatus = (typeof photoStatuses)[number];
+type PhotoListVisibility = (typeof photoVisibilities)[number];
+type PhotoListSort = (typeof photoListSorts)[number];
+
+type PhotoListQueryInput = {
+  limit?: string | null;
+  cursor?: string | null;
+  tag?: string | null;
+  search?: string | null;
+  status?: string | null;
+  visibility?: string | null;
+  sort?: string | null;
+};
+
+function normalizeTextQuery(value: string | null | undefined, maxLength: number) {
+  const normalized = value?.trim().slice(0, maxLength) ?? "";
+  return normalized || null;
+}
+
+function isPhotoListStatus(value: string | null): value is PhotoListStatus {
+  return photoStatuses.includes(value as PhotoListStatus);
+}
+
+function isPhotoListVisibility(value: string | null): value is PhotoListVisibility {
+  return photoVisibilities.includes(value as PhotoListVisibility);
+}
+
+function isPhotoListSort(value: string | null): value is PhotoListSort {
+  return photoListSorts.includes(value as PhotoListSort);
+}
+
+export function parsePhotoListQuery(input: PhotoListQueryInput) {
+  const tagSlug = normalizeTextQuery(input.tag, 80);
+  const status = normalizeTextQuery(input.status, 24);
+  const visibility = normalizeTextQuery(input.visibility, 24);
+  const sort = normalizeTextQuery(input.sort, 24);
+
+  return {
+    limit: normalizePhotoListLimit(input.limit ?? null),
+    cursor: normalizeTextQuery(input.cursor, 120),
+    search: normalizeTextQuery(input.search, 160),
+    tag: tagSlug ? slugify(tagSlug) || null : null,
+    status: isPhotoListStatus(status) ? status : null,
+    visibility: isPhotoListVisibility(visibility) ? visibility : null,
+    sort: isPhotoListSort(sort) ? sort : "newest"
+  };
+}
+
 export function parseCreatePhotoRequest(input: unknown): CreatePhotoInput {
   const parsed = createPhotoSchema.parse(input);
 
@@ -139,7 +205,7 @@ export function parseUpdatePhotoRequest(input: unknown): UpdatePhotoInput {
 
   return {
     ...parsed,
-    tags: normalizeTagNames(parsed.tags)
+    ...(parsed.tags ? { tags: normalizeTagNames(parsed.tags) } : {})
   };
 }
 
@@ -334,25 +400,52 @@ export async function getPhotos({
   limit,
   cursor,
   includePrivate = false,
-  tag
+  tag,
+  search,
+  status,
+  visibility,
+  sort
 }: {
   limit: string | null;
   cursor: string | null;
   includePrivate?: boolean;
   tag?: string | null;
+  search?: string | null;
+  status?: string | null;
+  visibility?: string | null;
+  sort?: string | null;
 }) {
-  const normalizedLimit = normalizePhotoListLimit(limit);
-  const values: unknown[] = [normalizedLimit + 1];
+  const listQuery = parsePhotoListQuery({ limit, cursor, tag, search, status, visibility, sort });
+  const values: unknown[] = [listQuery.limit + 1];
   const where = [includePrivate ? "p.status <> 'deleted'" : "p.visibility = 'public' AND p.status = 'ready'"];
 
-  if (cursor) {
-    values.push(cursor);
-    where.push(`p.id < $${values.length}`);
+  if (includePrivate && listQuery.status) {
+    values.push(listQuery.status);
+    where.push(`p.status = $${values.length}`);
   }
 
-  const tagSlug = tag ? slugify(tag) : "";
-  if (tagSlug) {
-    values.push(tagSlug);
+  if (includePrivate && listQuery.visibility) {
+    values.push(listQuery.visibility);
+    where.push(`p.visibility = $${values.length}`);
+  }
+
+  if (listQuery.search) {
+    values.push(`%${listQuery.search}%`);
+    const searchValue = `$${values.length}`;
+    where.push(
+      `(p.title ILIKE ${searchValue}
+        OR p.description ILIKE ${searchValue}
+        OR EXISTS (
+          SELECT 1
+          FROM photo_tags search_pt
+          JOIN tags search_t ON search_t.id = search_pt.tag_id
+          WHERE search_pt.photo_id = p.id AND search_t.name ILIKE ${searchValue}
+        ))`
+    );
+  }
+
+  if (listQuery.tag) {
+    values.push(listQuery.tag);
     where.push(
       `EXISTS (
         SELECT 1
@@ -362,6 +455,33 @@ export async function getPhotos({
       )`
     );
   }
+
+  const cursorClauseBySort: Record<PhotoListSort, string> = {
+    newest: "(p.uploaded_at, p.id) < ((SELECT cursor_photo.uploaded_at FROM photos cursor_photo WHERE cursor_photo.id = $cursor), $cursor)",
+    oldest: "(p.uploaded_at, p.id) > ((SELECT cursor_photo.uploaded_at FROM photos cursor_photo WHERE cursor_photo.id = $cursor), $cursor)",
+    "taken-newest":
+      "(COALESCE(p.taken_at, p.uploaded_at), p.id) < ((SELECT COALESCE(cursor_photo.taken_at, cursor_photo.uploaded_at) FROM photos cursor_photo WHERE cursor_photo.id = $cursor), $cursor)",
+    "taken-oldest":
+      "(COALESCE(p.taken_at, p.uploaded_at), p.id) > ((SELECT COALESCE(cursor_photo.taken_at, cursor_photo.uploaded_at) FROM photos cursor_photo WHERE cursor_photo.id = $cursor), $cursor)",
+    "title-asc":
+      "(COALESCE(LOWER(p.title), ''), p.id) > ((SELECT COALESCE(LOWER(cursor_photo.title), '') FROM photos cursor_photo WHERE cursor_photo.id = $cursor), $cursor)",
+    "title-desc":
+      "(COALESCE(LOWER(p.title), ''), p.id) < ((SELECT COALESCE(LOWER(cursor_photo.title), '') FROM photos cursor_photo WHERE cursor_photo.id = $cursor), $cursor)"
+  };
+
+  if (listQuery.cursor) {
+    values.push(listQuery.cursor);
+    where.push(cursorClauseBySort[listQuery.sort].replaceAll("$cursor", `$${values.length}`));
+  }
+
+  const orderByBySort: Record<PhotoListSort, string> = {
+    newest: "p.uploaded_at DESC, p.id DESC",
+    oldest: "p.uploaded_at ASC, p.id ASC",
+    "taken-newest": "COALESCE(p.taken_at, p.uploaded_at) DESC, p.id DESC",
+    "taken-oldest": "COALESCE(p.taken_at, p.uploaded_at) ASC, p.id ASC",
+    "title-asc": "COALESCE(LOWER(p.title), '') ASC, p.id ASC",
+    "title-desc": "COALESCE(LOWER(p.title), '') DESC, p.id DESC"
+  };
 
   const result = await query<PhotoRow>(
     `SELECT
@@ -385,17 +505,17 @@ export async function getPhotos({
      LEFT JOIN tags t ON t.id = pt.tag_id
      WHERE ${where.join(" AND ")}
      GROUP BY p.id
-     ORDER BY p.uploaded_at DESC, p.id DESC
+     ORDER BY ${orderByBySort[listQuery.sort]}
      LIMIT $1`,
     values
   );
 
-  const rows = result.rows.slice(0, normalizedLimit);
+  const rows = result.rows.slice(0, listQuery.limit);
   const items: PhotoListItem[] = rows.map(mapPhotoRow);
 
   return {
     items,
-    nextCursor: result.rows.length > normalizedLimit ? rows[rows.length - 1]?.id ?? null : null
+    nextCursor: result.rows.length > listQuery.limit ? rows[rows.length - 1]?.id ?? null : null
   };
 }
 
@@ -481,9 +601,12 @@ export async function getAdminPhotoById(photoId: string) {
 
 export async function updatePhoto(photoId: string, input: unknown) {
   const parsed = parseUpdatePhotoRequest(input);
-  const title = parsed.title || null;
+  const shouldUpdateTitle = parsed.title !== undefined;
+  const title = shouldUpdateTitle ? parsed.title || null : null;
   const baseSlug = title ? slugify(title) : photoId;
   const slug = `${baseSlug}-${photoId.slice(0, 8)}`;
+  const shouldUpdateDescription = parsed.description !== undefined;
+  const shouldUpdateTakenAt = parsed.takenAt !== undefined;
   const takenAt = parsed.takenAt ? parsed.takenAt : null;
 
   const client = await getPool().connect();
@@ -493,46 +616,127 @@ export async function updatePhoto(photoId: string, input: unknown) {
     const photo = await client.query<{ id: string }>(
       `UPDATE photos
        SET
-         title = $2,
-         slug = $3,
-         description = $4,
-         visibility = COALESCE($5, visibility),
-         taken_at = $6,
+         title = CASE WHEN $2 THEN $3 ELSE title END,
+         slug = CASE WHEN $2 THEN $4 ELSE slug END,
+         description = CASE WHEN $5 THEN $6 ELSE description END,
+         visibility = COALESCE($9, visibility),
+         taken_at = CASE WHEN $7 THEN $8 ELSE taken_at END,
          updated_at = NOW()
        WHERE id = $1 AND status <> 'deleted'
        RETURNING id`,
-      [photoId, title, slug, parsed.description || null, parsed.visibility || null, takenAt]
+      [
+        photoId,
+        shouldUpdateTitle,
+        title,
+        slug,
+        shouldUpdateDescription,
+        parsed.description || null,
+        shouldUpdateTakenAt,
+        takenAt,
+        parsed.visibility || null
+      ]
     );
 
     if (!photo.rows[0]) {
       throw new Error("Photo not found.");
     }
 
-    await client.query("DELETE FROM photo_tags WHERE photo_id = $1", [photoId]);
+    if (parsed.tags) {
+      await client.query("DELETE FROM photo_tags WHERE photo_id = $1", [photoId]);
 
-    for (const tagName of parsed.tags) {
-      const normalizedName = tagName.trim();
-      const tagSlug = slugify(normalizedName);
-      if (!tagSlug) continue;
+      for (const tagName of parsed.tags) {
+        const normalizedName = tagName.trim();
+        const tagSlug = slugify(normalizedName);
+        if (!tagSlug) continue;
 
-      const tag = await client.query<{ id: string }>(
-        `INSERT INTO tags (id, name, slug)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
-         RETURNING id`,
-        [randomUUID(), normalizedName, tagSlug]
-      );
+        const tag = await client.query<{ id: string }>(
+          `INSERT INTO tags (id, name, slug)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+           RETURNING id`,
+          [randomUUID(), normalizedName, tagSlug]
+        );
 
-      await client.query(
-        `INSERT INTO photo_tags (photo_id, tag_id)
-         VALUES ($1, $2)
-         ON CONFLICT DO NOTHING`,
-        [photoId, tag.rows[0].id]
-      );
+        await client.query(
+          `INSERT INTO photo_tags (photo_id, tag_id)
+           VALUES ($1, $2)
+           ON CONFLICT DO NOTHING`,
+          [photoId, tag.rows[0].id]
+        );
+      }
     }
 
     if (parsed.collectionIds) {
       await replacePhotoCollections(client, photoId, parsed.collectionIds);
+    }
+
+    if (parsed.primaryAssetId) {
+      const selectedAsset = await client.query<PrimaryPhotoAssetRow>(
+        `SELECT
+           id,
+           storage_key_original,
+           storage_key_thumbnail,
+           storage_key_medium,
+           storage_key_large,
+           storage_key_blur,
+           width,
+           height,
+           file_size,
+           mime_type
+         FROM photo_assets
+         WHERE id = $1 AND photo_id = $2
+         LIMIT 1`,
+        [parsed.primaryAssetId, photoId]
+      );
+      const asset = selectedAsset.rows[0];
+
+      if (!asset) {
+        throw new Error("Photo asset not found.");
+      }
+
+      if (!asset.storage_key_thumbnail && !asset.storage_key_medium && !asset.storage_key_large) {
+        throw new Error("Representative image is not ready.");
+      }
+
+      await client.query(
+        `UPDATE photo_assets
+         SET is_primary = FALSE, updated_at = NOW()
+         WHERE photo_id = $1`,
+        [photoId]
+      );
+      await client.query(
+        `UPDATE photo_assets
+         SET is_primary = TRUE, updated_at = NOW()
+         WHERE id = $1 AND photo_id = $2`,
+        [parsed.primaryAssetId, photoId]
+      );
+      await client.query(
+        `UPDATE photos
+         SET
+           storage_key_original = $2,
+           storage_key_thumbnail = $3,
+           storage_key_medium = $4,
+           storage_key_large = $5,
+           storage_key_blur = $6,
+           width = $7,
+           height = $8,
+           file_size = $9,
+           mime_type = $10,
+           updated_at = NOW()
+         WHERE id = $1`,
+        [
+          photoId,
+          asset.storage_key_original,
+          asset.storage_key_thumbnail,
+          asset.storage_key_medium,
+          asset.storage_key_large,
+          asset.storage_key_blur,
+          asset.width,
+          asset.height,
+          asset.file_size,
+          asset.mime_type
+        ]
+      );
     }
 
     await client.query("COMMIT");

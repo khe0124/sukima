@@ -40,16 +40,18 @@ export default function AdminLoginPage() {
       </section>
 
       <form action="/api/admin/login" className="upload-form" method="post" onSubmit={handleSubmit}>
-        <label>
-          Email
+        <label className="field-group">
+          <span className="field-label">Email</span>
           <input name="email" type="email" autoComplete="username" required />
         </label>
-        <label>
-          Password
+        <label className="field-group">
+          <span className="field-label">Password</span>
           <input name="password" type="password" autoComplete="current-password" required />
         </label>
-        <button type="submit">Login</button>
-        <p role="status">{status}</p>
+        <div className="form-actions">
+          <button type="submit">Login</button>
+        </div>
+        <p className="form-status" role="status">{status}</p>
       </form>
     </main>
   );

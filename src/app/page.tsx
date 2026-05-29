@@ -39,12 +39,17 @@ export default function HomePage() {
         <p className="eyebrow">Sukima</p>
         <h1>Photo Archive</h1>
         <p>Private originals, public-ready metadata, and a small admin upload workflow.</p>
-        <p>
-          <Link href="/archive">View archive</Link>
-        </p>
-        <p>
-          <Link href="/collections">View collections</Link>
-        </p>
+        <div className="form-actions">
+          <Link className="button-link" href="/archive">
+            View archive
+          </Link>
+          <Link className="button-link secondary" href="/collections">
+            View collections
+          </Link>
+          <Link className="button-link secondary" href="/admin/photos">
+            Admin
+          </Link>
+        </div>
       </section>
     </main>
   );

@@ -8,6 +8,8 @@
   --line: #d8d2c7;
   --surface: #ffffff;
   --accent: #205a66;
+  --danger: #b42318;
+  --focus: color-mix(in srgb, var(--accent), transparent 65%);
 }
 
 * {
@@ -109,15 +111,31 @@ a {
 
 .upload-form {
   display: grid;
-  gap: 18px;
+  gap: 20px;
   max-width: 560px;
 }
 
+.field-group,
 .upload-form label {
   display: grid;
   gap: 8px;
   color: var(--foreground);
   font-weight: 650;
+}
+
+.field-label,
+.visibility-control legend,
+.photo-selection legend {
+  color: var(--foreground);
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.field-help {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.45;
 }
 
 .upload-form input,
@@ -128,10 +146,26 @@ a {
   border-radius: 6px;
   background: var(--surface);
   color: var(--foreground);
-  padding: 10px 12px;
+  padding: 11px 12px;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.upload-form textarea {
+  resize: vertical;
+}
+
+.upload-form input:hover,
+.upload-form select:hover,
+.upload-form textarea:hover {
+  border-color: color-mix(in srgb, var(--accent), var(--line) 58%);
 }
 
 .dropzone {
+  display: grid;
+  gap: 8px;
   border: 1px dashed var(--line);
   border-radius: 8px;
   background: var(--surface);
@@ -177,7 +211,7 @@ a {
 }
 
 .upload-preview-grid li[data-valid="false"] {
-  border-color: #b42318;
+  border-color: var(--danger);
 }
 
 .upload-preview-grid img,
@@ -259,11 +293,100 @@ a {
   border-radius: 6px;
   cursor: pointer;
   padding: 7px 9px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
 }
 
 .check-menu input {
   width: auto;
   accent-color: var(--accent);
+}
+
+.check-menu label:has(input:checked) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 90%);
+}
+
+.representative-gallery {
+  display: grid;
+  gap: 10px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.representative-gallery legend {
+  color: var(--foreground);
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.representative-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 12px;
+}
+
+.representative-gallery-item {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: var(--surface);
+  cursor: pointer;
+  padding: 7px;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.representative-gallery-item[data-selected="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent), transparent 91%);
+}
+
+.representative-gallery-item input {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.representative-gallery-item input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.representative-gallery-item img,
+.representative-gallery-placeholder {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  background: var(--line);
+  object-fit: cover;
+}
+
+.representative-gallery-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.representative-gallery-item > span:last-child {
+  min-width: 0;
+  color: var(--foreground);
+  font-size: 0.82rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
 }
 
 .visibility-control {
@@ -272,11 +395,6 @@ a {
   border: 0;
   margin: 0;
   padding: 0;
-}
-
-.visibility-control legend {
-  color: var(--foreground);
-  font-weight: 650;
 }
 
 .visibility-control > div {
@@ -305,6 +423,10 @@ a {
   padding: 9px 12px;
   color: var(--muted);
   font-weight: 700;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease;
 }
 
 .visibility-control label:has(input:checked) span {
@@ -314,11 +436,21 @@ a {
 }
 
 .visibility-control input:focus-visible + span {
-  outline: 3px solid color-mix(in srgb, var(--accent), transparent 65%);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 
-.upload-form button {
+.form-actions,
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.upload-form button,
+.inline-form button,
+.manager-row button {
   width: fit-content;
   border: 0;
   border-radius: 6px;
@@ -327,6 +459,10 @@ a {
   padding: 10px 16px;
   font-weight: 700;
   cursor: pointer;
+  transition:
+    background 140ms ease,
+    opacity 140ms ease,
+    transform 140ms ease;
 }
 
 .upload-form button:disabled,
@@ -335,8 +471,23 @@ a {
   opacity: 0.65;
 }
 
-.upload-form .danger-button {
-  background: #b42318;
+.upload-form button:hover,
+.inline-form button:hover,
+.manager-row button:hover {
+  transform: translateY(-1px);
+}
+
+.upload-form .secondary-button,
+.secondary-button {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.upload-form .danger-button,
+.manager-row .danger-button,
+.danger-button {
+  background: var(--danger);
 }
 
 .plain-button {
@@ -351,11 +502,28 @@ a {
 }
 
 .upload-form button:focus-visible,
+.inline-form button:focus-visible,
+.inline-form input:focus-visible,
+.manager-row button:focus-visible,
+.manager-row input:focus-visible,
 .upload-form input:focus-visible,
 .upload-form select:focus-visible,
 .upload-form textarea:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--accent), transparent 65%);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
+}
+
+.form-status {
+  width: fit-content;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface), var(--background) 34%);
+  padding: 7px 11px;
+  color: var(--foreground);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .upload-results {
@@ -419,91 +587,6 @@ a {
 
 .toast[data-tone="error"] {
   border-color: #b42318;
-}
-
-.archive-shell {
-  width: min(1180px, calc(100% - 32px));
-}
-
-.photo-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 14px;
-}
-
-.photo-tile {
-  display: grid;
-  gap: 8px;
-  color: var(--foreground);
-  text-decoration: none;
-}
-
-.photo-tile img,
-.photo-stage img {
-  display: block;
-  width: 100%;
-  height: auto;
-  background: var(--line);
-}
-
-.photo-tile img {
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-}
-
-.photo-caption {
-  min-height: 1.4em;
-  color: var(--muted);
-  font-size: 0.92rem;
-  overflow-wrap: anywhere;
-}
-
-.photo-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  color: var(--muted);
-  font-size: 0.78rem;
-}
-
-.photo-placeholder {
-  display: grid;
-  aspect-ratio: 4 / 3;
-  place-items: center;
-  border: 1px solid var(--line);
-  color: var(--muted);
-}
-
-.collection-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-}
-
-.collection-card {
-  display: grid;
-  gap: 10px;
-  color: var(--foreground);
-  text-decoration: none;
-}
-
-.collection-card img {
-  display: block;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  height: auto;
-  object-fit: cover;
-  background: var(--line);
-}
-
-.collection-card strong,
-.collection-card small {
-  display: block;
-}
-
-.collection-card small {
-  margin-top: 4px;
-  color: var(--muted);
 }
 
 .photo-selection {
@@ -577,62 +660,50 @@ a {
   overflow-wrap: anywhere;
 }
 
-.photo-detail {
+.manager-stack {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-  gap: 32px;
-  width: min(1320px, calc(100% - 32px));
-  margin: 0 auto;
-  padding: 32px 0;
+  gap: 22px;
 }
 
-.photo-stage {
-  min-width: 0;
+.manager-list {
+  display: grid;
+  gap: 10px;
 }
 
-.photo-stage img {
-  max-height: calc(100vh - 64px);
-  object-fit: contain;
-}
-
-.photo-meta {
-  align-self: start;
-}
-
-.detail-asset-grid {
+.inline-form,
+.manager-row {
   display: grid;
   gap: 12px;
-  margin-top: 24px;
+  align-items: end;
 }
 
-.detail-asset-grid img {
-  display: block;
-  width: 100%;
-  height: auto;
-  background: var(--line);
+.inline-form {
+  grid-template-columns: minmax(220px, 360px) auto;
 }
 
-.tag-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 24px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.tag-list li {
+.manager-row {
+  grid-template-columns: minmax(180px, 1fr) auto auto auto;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 8px;
   background: var(--surface);
-  padding: 5px 10px;
-  color: var(--muted);
-  font-size: 0.9rem;
+  padding: 12px;
 }
 
-.tag-list a {
-  color: inherit;
-  text-decoration: none;
+.manager-row > span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.inline-form input,
+.manager-row input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--foreground);
+  padding: 11px 12px;
 }
 
 .row-heading {
@@ -662,9 +733,58 @@ a {
   color: var(--foreground);
 }
 
+.button-link.danger {
+  border: 1px solid var(--danger);
+  background: var(--danger);
+  color: white;
+  cursor: pointer;
+}
+
+.button-link:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.admin-photo-controls {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 12px;
+}
+
+.admin-photo-controls label {
+  display: grid;
+  gap: 6px;
+  color: var(--foreground);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.admin-photo-controls input,
+.admin-photo-controls select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  padding: 8px 10px;
+}
+
+.admin-photo-control-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .admin-photo-list {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .admin-photo-row {
@@ -678,12 +798,23 @@ a {
   padding: 12px;
 }
 
+.admin-photo-row-with-preview {
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 8px;
+}
+
 .admin-photo-row img,
 .admin-photo-placeholder {
   width: 120px;
   aspect-ratio: 4 / 3;
   object-fit: cover;
   background: var(--line);
+}
+
+.admin-photo-row-with-preview img,
+.admin-photo-row-with-preview .admin-photo-placeholder {
+  width: 72px;
 }
 
 .admin-photo-placeholder {
@@ -694,20 +825,23 @@ a {
 }
 
 .admin-photo-row h2 {
-  margin: 0 0 6px;
-  font-size: 1rem;
+  margin: 0 0 3px;
+  font-size: 0.95rem;
   letter-spacing: 0;
 }
 
 .admin-photo-row p {
   margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
-.action-row {
+.admin-photo-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .edit-preview {
@@ -723,18 +857,28 @@ a {
 }
 
 @media (max-width: 760px) {
-  .photo-detail {
-    grid-template-columns: 1fr;
-  }
-
   .row-heading,
   .admin-photo-row {
     align-items: stretch;
     grid-template-columns: 1fr;
   }
 
+  .admin-photo-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .inline-form,
+  .manager-row {
+    grid-template-columns: 1fr;
+  }
+
   .admin-photo-row img,
   .admin-photo-placeholder {
     width: 100%;
+  }
+
+  .admin-photo-actions,
+  .admin-photo-control-actions {
+    justify-content: flex-start;
   }
 }

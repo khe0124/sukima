@@ -20,7 +20,10 @@ export default async function EditPhotoPage({ params }: { params: { id: string }
     notFound();
   }
 
-  const imageUrl = photo.mediumUrl || photo.thumbnailUrl || photo.largeUrl;
+  const photoForForm = {
+    ...photo,
+    assets: photo.assets?.map(({ storageKeyOriginal: _storageKeyOriginal, ...asset }) => asset)
+  };
 
   return (
     <main className="shell">
@@ -32,17 +35,7 @@ export default async function EditPhotoPage({ params }: { params: { id: string }
         </p>
       </section>
 
-      {imageUrl ? (
-        <img
-          className="edit-preview"
-          alt={photo.title || "Photo preview"}
-          height={photo.height || 900}
-          src={imageUrl}
-          width={photo.width || 1200}
-        />
-      ) : null}
-
-      <EditPhotoForm photo={photo} collections={collections} tags={tags} />
+      <EditPhotoForm photo={photoForForm} collections={collections} tags={tags} />
     </main>
   );
 }

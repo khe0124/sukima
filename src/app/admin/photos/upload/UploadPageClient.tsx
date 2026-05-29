@@ -305,6 +305,7 @@ export default function UploadPageClient({
       >
         <label
           className="dropzone"
+          aria-describedby="upload-file-help"
           data-dragging={isDragging}
           onDragLeave={(event) => {
             event.preventDefault();
@@ -316,9 +317,11 @@ export default function UploadPageClient({
           }}
           onDrop={handleDrop}
         >
-          <span>Images</span>
+          <span className="field-label">Images</span>
           <strong>Drop images here or click to choose</strong>
-          <small>JPEG, PNG, WebP, HEIC, or HEIF. Maximum 10MB each.</small>
+          <small id="upload-file-help">
+            Originals stay private. JPEG, PNG, WebP, HEIC, or HEIF. Maximum 10MB each.
+          </small>
           <input
             accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
             disabled={isSubmitting}
@@ -367,8 +370,8 @@ export default function UploadPageClient({
           </ul>
         ) : null}
 
-        <label>
-          Title
+        <label className="field-group">
+          <span className="field-label">Title</span>
           <Controller
             name="title"
             control={control}
@@ -377,8 +380,8 @@ export default function UploadPageClient({
             )}
           />
         </label>
-        <label>
-          Description
+        <label className="field-group">
+          <span className="field-label">Description</span>
           <Controller
             name="description"
             control={control}
@@ -387,27 +390,32 @@ export default function UploadPageClient({
             )}
           />
         </label>
-        <label>
-          Taken at
+        <label className="field-group">
+          <span className="field-label">Taken at</span>
           <Controller
             name="takenAt"
             control={control}
             render={({ field }) => <input {...field} type="datetime-local" />}
           />
         </label>
-        <label>
-          Tags
+        <label className="field-group">
+          <span className="field-label">Tags</span>
           <Controller
             name="tags"
             control={control}
             render={({ field }) => (
               <input
                 {...field}
+                aria-label="Tags"
+                aria-describedby="upload-tags-help"
                 type="text"
                 placeholder="street, night, seoul"
               />
             )}
           />
+          <span className="field-help" id="upload-tags-help">
+            Use commas for new tags, or choose from existing tags below.
+          </span>
         </label>
         {availableTags.length > 0 ? (
           <details className="check-menu">
@@ -418,8 +426,9 @@ export default function UploadPageClient({
                   <input
                     checked={selectedTags.includes(tag.name)}
                     onChange={(event) => {
+                      const checked = event.currentTarget.checked;
                       setSelectedTags((current) =>
-                        event.currentTarget.checked
+                        checked
                           ? [...current, tag.name]
                           : current.filter((name) => name !== tag.name),
                       );
@@ -441,8 +450,9 @@ export default function UploadPageClient({
                   <input
                     checked={selectedCollectionIds.includes(collection.id)}
                     onChange={(event) => {
+                      const checked = event.currentTarget.checked;
                       setSelectedCollectionIds((current) =>
-                        event.currentTarget.checked
+                        checked
                           ? [...current, collection.id]
                           : current.filter((id) => id !== collection.id),
                       );
@@ -480,10 +490,12 @@ export default function UploadPageClient({
           />
         </fieldset>
 
-        <button aria-busy={isSubmitting} disabled={isSubmitting} type="submit">
-          {isSubmitting ? "Uploading..." : "Upload"}
-        </button>
-        <p role="status">
+        <div className="form-actions">
+          <button aria-busy={isSubmitting} disabled={isSubmitting} type="submit">
+            {isSubmitting ? "Uploading..." : "Upload"}
+          </button>
+        </div>
+        <p className="form-status" role="status">
           {status}
           {isSubmitting ? " (submitting)" : ""}
         </p>

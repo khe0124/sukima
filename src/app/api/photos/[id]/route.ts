@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { requireAdmin } from "@/lib/auth";
+import { assertSameOriginRequest, getApiErrorStatus } from "@/lib/security";
 import { getAdminPhotoById, softDeletePhoto, updatePhoto } from "@/server/photos";
 
 export const runtime = "nodejs";
@@ -25,6 +26,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireAdmin(request);
+    assertSameOriginRequest(request);
     const photo = await updatePhoto(params.id, await request.json());
 
     return NextResponse.json(photo);
@@ -34,7 +36,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 
     const message = error instanceof Error ? error.message : "Photo update failed.";
-    const status = message === "Unauthorized." ? 401 : message === "Photo not found." ? 404 : 500;
+    const status =
+      message === "Photo not found." || message === "Photo asset not found."
+        ? 404
+        : message === "Representative image is not ready."
+          ? 400
+          : getApiErrorStatus(message);
     return NextResponse.json({ error: message }, { status });
   }
 }
@@ -42,11 +49,12 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireAdmin(request);
+    assertSameOriginRequest(request);
     await softDeletePhoto(params.id);
 
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Photo delete failed.";
-    return NextResponse.json({ error: message }, { status: message === "Unauthorized." ? 401 : 500 });
+    return NextResponse.json({ error: message }, { status: getApiErrorStatus(message) });
   }
 }

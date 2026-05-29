@@ -70,8 +70,8 @@ export function TagManager({ tags }: { tags: TagListItem[] }) {
   return (
     <div className="manager-stack">
       <form className="inline-form" onSubmit={createTag}>
-        <label>
-          New tag
+        <label className="field-group">
+          <span className="field-label">New tag</span>
           <input name="name" maxLength={40} required />
         </label>
         <button type="submit">Create</button>
@@ -87,8 +87,8 @@ export function TagManager({ tags }: { tags: TagListItem[] }) {
               updateTag(tag.id, event.currentTarget);
             }}
           >
-            <label>
-              Name
+            <label className="field-group">
+              <span className="field-label">Name</span>
               <input name="name" maxLength={40} defaultValue={tag.name} required />
             </label>
             <span>{tag.photoCount} photos</span>

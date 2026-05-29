@@ -62,16 +62,16 @@ export function EditCollectionForm({
 
   return (
     <form className="upload-form" onSubmit={saveCollection}>
-      <label>
-        Title
+      <label className="field-group">
+        <span className="field-label">Title</span>
         <input name="title" maxLength={160} defaultValue={collection.title} required />
       </label>
-      <label>
-        Description
+      <label className="field-group">
+        <span className="field-label">Description</span>
         <textarea name="description" rows={4} maxLength={2000} defaultValue={collection.description ?? ""} />
       </label>
-      <label>
-        Visibility
+      <label className="field-group">
+        <span className="field-label">Visibility</span>
         <select name="visibility" defaultValue={collection.visibility}>
           <option value="private">Private</option>
           <option value="public">Public</option>
@@ -79,8 +79,8 @@ export function EditCollectionForm({
           <option value="draft">Draft</option>
         </select>
       </label>
-      <label>
-        Cover photo
+      <label className="field-group">
+        <span className="field-label">Cover photo</span>
         <select name="coverPhotoId" defaultValue={collection.coverPhotoId ?? ""}>
           <option value="">None</option>
           {photos.map((photo) => (
@@ -91,8 +91,10 @@ export function EditCollectionForm({
         </select>
       </label>
       <PhotoSelectionGrid photos={photos} selectedPhotoIds={selectedPhotoIds} onChange={setSelectedPhotoIds} />
-      <button type="submit">Save</button>
-      <p role="status">{status}</p>
+      <div className="form-actions">
+        <button type="submit">Save</button>
+      </div>
+      <p className="form-status" role="status">{status}</p>
     </form>
   );
 }

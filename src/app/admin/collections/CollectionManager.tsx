@@ -84,16 +84,16 @@ export function CollectionManager({
   return (
     <div className="manager-stack">
       <form className="upload-form" onSubmit={createCollection}>
-        <label>
-          Title
+        <label className="field-group">
+          <span className="field-label">Title</span>
           <input name="title" maxLength={160} required />
         </label>
-        <label>
-          Description
+        <label className="field-group">
+          <span className="field-label">Description</span>
           <textarea name="description" rows={3} maxLength={2000} />
         </label>
-        <label>
-          Visibility
+        <label className="field-group">
+          <span className="field-label">Visibility</span>
           <select name="visibility" defaultValue="private">
             <option value="private">Private</option>
             <option value="public">Public</option>
@@ -102,7 +102,9 @@ export function CollectionManager({
           </select>
         </label>
         <PhotoSelectionGrid photos={photos} selectedPhotoIds={selectedPhotoIds} onChange={setSelectedPhotoIds} />
-        <button type="submit">Create</button>
+        <div className="form-actions">
+          <button type="submit">Create</button>
+        </div>
       </form>
 
       <div className="manager-list">
