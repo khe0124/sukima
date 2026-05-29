@@ -1,17 +1,55 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import type { Metadata } from "next";
 
+import {
+  buildCanonicalUrl,
+  getDefaultSeoDescription,
+  getSeoDescription,
+  getSeoTitle,
+  serializeJsonLd
+} from "@/lib/seo";
 import { getPhotos } from "@/server/photos";
 
 import { ViewedPhotoTile } from "./ViewedPhoto";
 
 export const dynamic = "force-dynamic";
 
+type ArchivePageProps = {
+  searchParams: { cursor?: string; tag?: string };
+};
+
+export function generateMetadata({ searchParams }: ArchivePageProps): Metadata {
+  const activeTag = searchParams.tag?.trim() || "";
+  const title = activeTag ? `#${activeTag} Photos` : "Photo Archive";
+  const description = activeTag
+    ? getSeoDescription(`Public photos tagged ${activeTag} from Sukima Photo Archive.`)
+    : getDefaultSeoDescription();
+  const canonicalPath = activeTag ? `/archive?tag=${encodeURIComponent(activeTag)}` : "/archive";
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: canonicalPath
+    },
+    openGraph: {
+      type: "website",
+      url: buildCanonicalUrl(canonicalPath),
+      title: getSeoTitle(title),
+      description
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: getSeoTitle(title),
+      description
+    }
+  };
+}
+
 export default async function ArchivePage({
   searchParams,
-}: {
-  searchParams: { cursor?: string; tag?: string };
-}) {
+}: ArchivePageProps) {
   const activeTag = searchParams.tag?.trim() || "";
   const photos = await getPhotos({
     limit: "30",
@@ -24,9 +62,35 @@ export default async function ArchivePage({
         cursor: photos.nextCursor,
       }).toString()}`
     : "";
+  const canonicalPath = activeTag ? `/archive?tag=${encodeURIComponent(activeTag)}` : "/archive";
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: activeTag ? `#${activeTag} Photos` : "Photo Archive",
+    description: activeTag
+      ? `Public photos tagged ${activeTag} from Sukima Photo Archive.`
+      : getDefaultSeoDescription(),
+    url: buildCanonicalUrl(canonicalPath),
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: photos.items
+        .filter((photo) => photo.slug)
+        .map((photo, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          name: photo.title || "Untitled photo",
+          url: buildCanonicalUrl(`/archive/${photo.slug}`),
+          image: photo.thumbnailUrl || photo.mediumUrl || photo.largeUrl || undefined
+        }))
+    }
+  };
 
   return (
     <main className="shell w-[min(1180px,calc(100%_-_32px))]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }}
+      />
       <section className="page-heading">
         <p className="eyebrow">Archive</p>
         {/* <h1 className="text-base">{activeTag ? `#${activeTag}` : "Photos"}</h1> */}

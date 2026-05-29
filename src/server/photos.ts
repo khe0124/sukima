@@ -105,6 +105,12 @@ type PhotoOriginalRow = {
   storage_key_original: string;
 };
 
+type PhotoSitemapRow = {
+  slug: string;
+  updated_at: Date | null;
+  uploaded_at: Date | null;
+};
+
 type PhotoAssetRow = {
   id: string;
   photo_id: string;
@@ -424,6 +430,20 @@ export async function getPhotoBySlug(slug: string) {
   if (!row) return null;
 
   return mapPhotoRow(row);
+}
+
+export async function getPublicPhotoSitemapEntries() {
+  const result = await query<PhotoSitemapRow>(
+    `SELECT slug, updated_at, uploaded_at
+     FROM photos
+     WHERE visibility = 'public' AND status = 'ready' AND slug IS NOT NULL
+     ORDER BY COALESCE(updated_at, uploaded_at) DESC`
+  );
+
+  return result.rows.map((row) => ({
+    slug: row.slug,
+    lastModified: (row.updated_at ?? row.uploaded_at ?? new Date()).toISOString()
+  }));
 }
 
 export async function getAdminPhotoById(photoId: string) {

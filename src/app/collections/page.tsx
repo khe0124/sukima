@@ -1,16 +1,66 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import type { Metadata } from "next";
 
 import { ViewedPhotoImage } from "@/app/archive/ViewedPhoto";
+import {
+  buildCanonicalUrl,
+  getDefaultSeoDescription,
+  getSeoTitle,
+  serializeJsonLd
+} from "@/lib/seo";
 import { getPublicCollections } from "@/server/collections";
 
 export const dynamic = "force-dynamic";
 
+const pageTitle = "Photo Collections";
+const pageDescription = "Curated public photo collections from Sukima Photo Archive.";
+
+export const metadata: Metadata = {
+  title: pageTitle,
+  description: pageDescription,
+  alternates: {
+    canonical: "/collections"
+  },
+  openGraph: {
+    type: "website",
+    url: buildCanonicalUrl("/collections"),
+    title: getSeoTitle(pageTitle),
+    description: pageDescription
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: getSeoTitle(pageTitle),
+    description: pageDescription
+  }
+};
+
 export default async function CollectionsPage() {
   const collections = await getPublicCollections();
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: pageTitle,
+    description: getDefaultSeoDescription(),
+    url: buildCanonicalUrl("/collections"),
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: collections.map((collection, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: collection.title,
+        url: buildCanonicalUrl(`/collections/${collection.slug}`),
+        image: collection.coverImageUrl || undefined
+      }))
+    }
+  };
 
   return (
     <main className="shell w-[min(1180px,calc(100%_-_32px))]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }}
+      />
       <section className="page-heading">
         <p className="eyebrow">Collections</p>
         <h1>Photo Collections</h1>

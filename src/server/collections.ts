@@ -55,6 +55,12 @@ type CollectionPhotoRow = {
   taken_at: Date | null;
   tags: string[] | null;
 };
+type CollectionSitemapRow = {
+  slug: string;
+  updated_at: Date | null;
+  created_at: Date | null;
+};
+
 
 export function parseCollectionRequest(input: unknown) {
   return collectionRequestSchema.parse(input);
@@ -178,6 +184,20 @@ export async function getPublicCollections() {
 
   return result.rows.map(mapCollectionRow);
 }
+export async function getPublicCollectionSitemapEntries() {
+  const result = await query<CollectionSitemapRow>(
+    `SELECT slug, updated_at, created_at
+     FROM collections
+     WHERE visibility = 'public'
+     ORDER BY COALESCE(updated_at, created_at) DESC`
+  );
+
+  return result.rows.map((row) => ({
+    slug: row.slug,
+    lastModified: (row.updated_at ?? row.created_at ?? new Date()).toISOString()
+  }));
+}
+
 
 export async function getPublicCollectionBySlug(slug: string) {
   const collectionResult = await query<CollectionRow>(

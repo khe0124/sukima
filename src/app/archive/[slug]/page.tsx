@@ -1,18 +1,78 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import {
+  buildCanonicalUrl,
+  buildPhotoStructuredData,
+  getSeoDescription,
+  getSeoTitle,
+  serializeJsonLd
+} from "@/lib/seo";
 import { getPhotoBySlugWithAssets } from "@/server/photos";
 
 import { ViewedPhotoMarker } from "../ViewedPhoto";
 
 export const dynamic = "force-dynamic";
 
+type PhotoDetailPageProps = {
+  params: { slug: string };
+};
+
+export async function generateMetadata({ params }: PhotoDetailPageProps): Promise<Metadata> {
+  const photo = await getPhotoBySlugWithAssets(params.slug);
+
+  if (!photo) {
+    return {
+      title: "Photo Not Found",
+      robots: {
+        index: false,
+        follow: false
+      }
+    };
+  }
+
+  const title = photo.title || "Untitled Photo";
+  const description = getSeoDescription(photo.description || `${title} from Sukima Photo Archive.`);
+  const imageUrl = photo.largeUrl || photo.mediumUrl || photo.thumbnailUrl;
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `/archive/${params.slug}`
+    },
+    openGraph: {
+      type: "article",
+      url: buildCanonicalUrl(`/archive/${params.slug}`),
+      title: getSeoTitle(title),
+      description,
+      publishedTime: photo.takenAt ?? photo.uploadedAt ?? undefined,
+      tags: photo.tags,
+      images: imageUrl
+        ? [
+            {
+              url: imageUrl,
+              width: photo.width || 1200,
+              height: photo.height || 900,
+              alt: title
+            }
+          ]
+        : undefined
+    },
+    twitter: {
+      card: imageUrl ? "summary_large_image" : "summary",
+      title: getSeoTitle(title),
+      description,
+      images: imageUrl ? [imageUrl] : undefined
+    }
+  };
+}
+
 export default async function PhotoDetailPage({
   params,
-}: {
-  params: { slug: string };
-}) {
+}: PhotoDetailPageProps) {
   const photo = await getPhotoBySlugWithAssets(params.slug);
 
   if (!photo) {
@@ -20,9 +80,23 @@ export default async function PhotoDetailPage({
   }
 
   const imageUrl = photo.largeUrl || photo.mediumUrl || photo.thumbnailUrl;
+  const structuredData = buildPhotoStructuredData({
+    slug: photo.slug,
+    title: photo.title,
+    description: photo.description,
+    imageUrl,
+    width: photo.width,
+    height: photo.height,
+    takenAt: photo.takenAt,
+    tags: photo.tags
+  });
 
   return (
     <main className="shell w-[min(720px,calc(100%_-_32px))]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }}
+      />
       <ViewedPhotoMarker photoId={photo.id} />
       <section className="self-start">
         <p className="eyebrow">Photo</p>

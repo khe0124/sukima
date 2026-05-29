@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
@@ -6,6 +7,14 @@ import { ADMIN_SESSION_COOKIE, parseAdminSessionToken } from "@/lib/auth";
 import { getRequiredEnv } from "@/lib/env";
 
 import { LogoutButton } from "./LogoutButton";
+
+export const metadata: Metadata = {
+  title: "Admin",
+  robots: {
+    index: false,
+    follow: false
+  }
+};
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const token = cookies().get(ADMIN_SESSION_COOKIE)?.value;
