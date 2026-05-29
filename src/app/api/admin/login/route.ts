@@ -8,6 +8,7 @@ import {
   verifyAdminCredentials
 } from "@/lib/auth";
 import { getRequiredEnv } from "@/lib/env";
+import { assertSameOriginRequest, getApiErrorStatus } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -81,6 +82,7 @@ export async function POST(request: NextRequest) {
   let wantsRedirect = false;
 
   try {
+    assertSameOriginRequest(request);
     const parsed = await parseLoginBody(request);
     wantsRedirect = parsed.wantsRedirect;
     const body = parsed.body;
@@ -102,6 +104,7 @@ export async function POST(request: NextRequest) {
       return createLoginErrorResponse("Invalid login request.", 400, wantsRedirect);
     }
 
-    return createLoginErrorResponse("Login failed.", 500, wantsRedirect);
+    const message = error instanceof Error ? error.message : "Login failed.";
+    return createLoginErrorResponse(message, getApiErrorStatus(message), wantsRedirect);
   }
 }

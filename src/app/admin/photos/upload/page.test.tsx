@@ -119,4 +119,17 @@ describe("UploadPageClient", () => {
     expect(await screen.findAllByText("Unsupported image type.")).not.toHaveLength(0);
     expect(screen.getByRole("status").textContent).toBe("Fix invalid files before uploading.");
   });
+
+  it("selects existing tags without reading a stale event target", () => {
+    render(
+      <UploadPageClient
+        tags={[{ id: "tag-1", name: "night", slug: "night" }]}
+      />
+    );
+
+    fireEvent.click(screen.getByText("Existing tags (0)"));
+    fireEvent.click(screen.getByLabelText("night"));
+
+    expect(screen.getByText("Existing tags (1)")).toBeTruthy();
+  });
 });

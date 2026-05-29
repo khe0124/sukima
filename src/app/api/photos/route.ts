@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { requireAdmin } from "@/lib/auth";
+import { assertSameOriginRequest, getApiErrorStatus } from "@/lib/security";
 import { createPhoto, getPhotos } from "@/server/photos";
 
 export const runtime = "nodejs";
@@ -9,6 +10,7 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   try {
     await requireAdmin(request);
+    assertSameOriginRequest(request);
     const body = await request.json();
     const photo = await createPhoto(body);
 
@@ -19,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     const message = error instanceof Error ? error.message : "Photo creation failed.";
-    return NextResponse.json({ error: message }, { status: message === "Unauthorized." ? 401 : 500 });
+    return NextResponse.json({ error: message }, { status: getApiErrorStatus(message) });
   }
 }
 
@@ -36,7 +38,11 @@ export async function GET(request: NextRequest) {
       limit: searchParams.get("limit"),
       cursor: searchParams.get("cursor"),
       includePrivate,
-      tag: searchParams.get("tag")
+      tag: searchParams.get("tag"),
+      search: searchParams.get("search"),
+      status: searchParams.get("status"),
+      visibility: searchParams.get("visibility"),
+      sort: searchParams.get("sort")
     });
 
     return NextResponse.json(photos);

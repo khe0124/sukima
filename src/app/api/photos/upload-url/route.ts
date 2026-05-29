@@ -6,6 +6,7 @@ import { ZodError } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { buildOriginalStorageKey, parseUploadUrlRequest } from "@/lib/photos";
 import { createOriginalUploadUrl } from "@/lib/r2";
+import { assertSameOriginRequest, getApiErrorStatus, NO_STORE_HEADERS } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,7 @@ const javascriptUploadRequiredMessage =
 export async function POST(request: NextRequest) {
   try {
     await requireAdmin(request);
+    assertSameOriginRequest(request);
 
     const contentType = request.headers.get("content-type") || "";
     if (!contentType.includes("application/json")) {
@@ -33,17 +35,20 @@ export async function POST(request: NextRequest) {
       contentType: upload.contentType
     });
 
-    return NextResponse.json({
-      uploadUrl,
-      photoId,
-      storageKeyOriginal
-    });
+    return NextResponse.json(
+      {
+        uploadUrl,
+        photoId,
+        storageKeyOriginal
+      },
+      { headers: NO_STORE_HEADERS }
+    );
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: error.issues[0]?.message ?? "Invalid request." }, { status: 400 });
     }
 
     const message = error instanceof Error ? error.message : "Upload URL failed.";
-    return NextResponse.json({ error: message }, { status: message === "Unauthorized." ? 401 : 500 });
+    return NextResponse.json({ error: message }, { status: getApiErrorStatus(message) });
   }
 }

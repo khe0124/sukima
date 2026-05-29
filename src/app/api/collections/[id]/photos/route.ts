@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 
 import { requireAdmin } from "@/lib/auth";
+import { assertSameOriginRequest, getApiErrorStatus } from "@/lib/security";
 import { updateCollectionPhotos } from "@/server/collections";
 
 export const runtime = "nodejs";
@@ -9,6 +10,7 @@ export const runtime = "nodejs";
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireAdmin(request);
+    assertSameOriginRequest(request);
     await updateCollectionPhotos(params.id, await request.json());
 
     return NextResponse.json({ ok: true });
@@ -18,6 +20,6 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const message = error instanceof Error ? error.message : "Collection photos update failed.";
-    return NextResponse.json({ error: message }, { status: message === "Unauthorized." ? 401 : 500 });
+    return NextResponse.json({ error: message }, { status: getApiErrorStatus(message) });
   }
 }
