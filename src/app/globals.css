@@ -537,8 +537,8 @@ a {
   background: var(--accent);
   color: white;
   padding: 0 14px;
-  font-size: 0.875rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 500;
   line-height: 1;
   cursor: pointer;
   transition:
@@ -993,8 +993,8 @@ a {
   background: var(--accent);
   color: white;
   padding: 0 14px;
-  font-size: 0.875rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 500;
   line-height: 1;
   text-decoration: none;
   transition:
