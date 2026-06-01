@@ -899,15 +899,15 @@ a {
 }
 
 .api-docs-method[data-method="GET"] {
-  border-color: color-mix(in srgb, #205a66, var(--line) 50%);
-  color: #205a66;
+  border-color: color-mix(in srgb, var(--foreground), var(--line) 50%);
+  color: var(--foreground);
 }
 
 .api-docs-method[data-method="POST"],
 .api-docs-method[data-method="PUT"],
 .api-docs-method[data-method="PATCH"] {
-  border-color: color-mix(in srgb, #6f5428, var(--line) 50%);
-  color: #6f5428;
+  border-color: color-mix(in srgb, var(--muted), var(--line) 50%);
+  color: var(--muted);
 }
 
 .api-docs-method[data-method="DELETE"] {
