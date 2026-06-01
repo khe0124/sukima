@@ -21,6 +21,8 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), "Inter", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 300;
   font-optical-sizing: auto;
   font-style: normal;
 }
@@ -45,13 +47,11 @@ textarea {
 
 .eyebrow {
   margin: 0 0 8px;
-  color: var(--accent);
-  font-family: var(--font-cormorant), "Cormorant", serif;
-  font-optical-sizing: auto;
-  font-style: normal;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0;
+  color: var(--muted);
+  font-family: var(--font-inter), "Inter", sans-serif;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 
@@ -60,9 +60,10 @@ h1 {
   font-family: var(--font-cormorant), "Cormorant", serif;
   font-optical-sizing: auto;
   font-style: normal;
-  font-size: clamp(2rem, 4vw, 3.5rem);
-  line-height: 1;
-  letter-spacing: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
 h2,
@@ -72,9 +73,16 @@ h3 {
   font-style: normal;
 }
 
+h2 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 p {
   color: var(--muted);
-  line-height: 1.6;
+  font-size: 0.75rem;
+  font-weight: 300;
+  line-height: 1.65;
 }
 
 a {
