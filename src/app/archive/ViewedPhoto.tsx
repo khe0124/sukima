@@ -132,11 +132,11 @@ export function ViewedPhotoTile({
           {placeholderText}
         </span>
       )}
-      <span className="min-h-[1.4em] text-[0.92rem] text-[var(--muted)] [overflow-wrap:anywhere]">
+      <span className="min-h-[1.4em] text-[0.75rem] text-[var(--muted)] [overflow-wrap:anywhere]">
         {photo.title || "Untitled"}
       </span>
       {showTags && photo.tags && photo.tags.length > 0 ? (
-        <span className="flex flex-wrap gap-1.5 text-[0.78rem] text-[var(--muted)]">
+        <span className="flex flex-wrap gap-1.5 text-[0.6875rem] text-[var(--muted)]">
           {photo.tags.slice(0, 3).map((tag) => (
             <span key={tag}>#{tag}</span>
           ))}

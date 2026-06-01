@@ -120,7 +120,7 @@ export default async function PhotoDetailPage({
           >
             {photo.tags.map((tag) => (
               <li
-                className="rounded-full border border-[var(--line)] bg-[var(--surface)] px-2.5 py-[5px] text-[0.9rem] text-[var(--muted)]"
+                className="border border-[var(--line)] bg-[var(--surface)] px-2.5 py-[5px] text-[0.75rem] text-[var(--muted)]"
                 key={tag}
               >
                 <Link

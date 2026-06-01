@@ -2,14 +2,14 @@
 
 :root {
   color-scheme: light;
-  --background: #f7f5f1;
-  --foreground: #1f2933;
-  --muted: #667085;
-  --line: #d8d2c7;
+  --background: #ffffff;
+  --foreground: #141414;
+  --muted: #6e6e6e;
+  --line: #e2e2e2;
   --surface: #ffffff;
-  --accent: #205a66;
+  --accent: #141414;
   --danger: #b42318;
-  --focus: color-mix(in srgb, var(--accent), transparent 65%);
+  --focus: color-mix(in srgb, var(--foreground), transparent 70%);
 }
 
 * {
@@ -21,6 +21,8 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), "Inter", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 300;
   font-optical-sizing: auto;
   font-style: normal;
 }
@@ -45,13 +47,11 @@ textarea {
 
 .eyebrow {
   margin: 0 0 8px;
-  color: var(--accent);
-  font-family: var(--font-cormorant), "Cormorant", serif;
-  font-optical-sizing: auto;
-  font-style: normal;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0;
+  color: var(--muted);
+  font-family: var(--font-inter), "Inter", sans-serif;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 
@@ -60,9 +60,10 @@ h1 {
   font-family: var(--font-cormorant), "Cormorant", serif;
   font-optical-sizing: auto;
   font-style: normal;
-  font-size: clamp(2rem, 4vw, 3.5rem);
-  line-height: 1;
-  letter-spacing: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
 h2,
@@ -72,9 +73,16 @@ h3 {
   font-style: normal;
 }
 
+h2 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 p {
   color: var(--muted);
-  line-height: 1.6;
+  font-size: 0.75rem;
+  font-weight: 300;
+  line-height: 1.65;
 }
 
 a {
@@ -143,7 +151,7 @@ a {
 .upload-form textarea {
   width: 100%;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface);
   color: var(--foreground);
   padding: 11px 12px;
@@ -167,7 +175,7 @@ a {
   display: grid;
   gap: 8px;
   border: 1px dashed var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   cursor: pointer;
   padding: 22px;
@@ -206,7 +214,7 @@ a {
 .upload-preview-grid li {
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
 }
 
@@ -267,7 +275,7 @@ a {
 
 .check-menu {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   padding: 10px 12px;
 }
@@ -290,7 +298,7 @@ a {
   align-items: center;
   gap: 6px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   cursor: pointer;
   padding: 7px 9px;
   font-size: 0.84rem;
@@ -335,7 +343,7 @@ a {
   display: grid;
   gap: 8px;
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   cursor: pointer;
   padding: 7px;
@@ -369,7 +377,7 @@ a {
   display: block;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--line);
   object-fit: cover;
 }
@@ -431,7 +439,7 @@ a {
   justify-content: space-between;
   gap: 12px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface);
   padding: 9px 10px;
   font-size: 0.84rem;
@@ -486,7 +494,7 @@ a {
 .visibility-control span {
   display: block;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface);
   padding: 9px 12px;
   color: var(--muted);
@@ -525,12 +533,12 @@ a {
   min-height: 36px;
   width: fit-content;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--accent);
   color: white;
   padding: 0 14px;
-  font-size: 0.875rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 500;
   line-height: 1;
   cursor: pointer;
   transition:
@@ -586,7 +594,7 @@ a {
   min-height: 36px;
   width: fit-content;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 0;
   padding: 0 14px;
   color: white;
   font: inherit;
@@ -617,7 +625,7 @@ a {
   width: fit-content;
   margin: 0;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--surface), var(--background) 34%);
   padding: 7px 11px;
   color: var(--foreground);
@@ -640,7 +648,7 @@ a {
   justify-content: space-between;
   gap: 12px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface);
   padding: 10px 12px;
 }
@@ -674,7 +682,7 @@ a {
   z-index: 20;
   max-width: min(360px, calc(100vw - 36px));
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   padding: 12px 14px;
   color: var(--foreground);
@@ -714,7 +722,7 @@ a {
   gap: 8px;
   align-content: start;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   cursor: pointer;
   padding: 8px;
@@ -740,7 +748,7 @@ a {
   display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--line);
   object-fit: cover;
 }
@@ -766,7 +774,7 @@ a {
 
 .api-docs-card {
   border: 1px solid color-mix(in srgb, var(--line), var(--surface) 22%);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
 }
 
@@ -844,7 +852,7 @@ a {
   min-width: 30px;
   justify-content: center;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--background), var(--surface) 45%);
   padding: 3px 9px;
   color: var(--muted);
@@ -882,7 +890,7 @@ a {
   min-width: 62px;
   justify-content: center;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--surface);
   padding: 3px 9px;
   color: var(--foreground);
@@ -891,15 +899,15 @@ a {
 }
 
 .api-docs-method[data-method="GET"] {
-  border-color: color-mix(in srgb, #205a66, var(--line) 50%);
-  color: #205a66;
+  border-color: color-mix(in srgb, var(--foreground), var(--line) 50%);
+  color: var(--foreground);
 }
 
 .api-docs-method[data-method="POST"],
 .api-docs-method[data-method="PUT"],
 .api-docs-method[data-method="PATCH"] {
-  border-color: color-mix(in srgb, #6f5428, var(--line) 50%);
-  color: #6f5428;
+  border-color: color-mix(in srgb, var(--muted), var(--line) 50%);
+  color: var(--muted);
 }
 
 .api-docs-method[data-method="DELETE"] {
@@ -944,7 +952,7 @@ a {
 .manager-row {
   grid-template-columns: minmax(180px, 1fr) auto auto auto;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   padding: 12px;
 }
@@ -960,7 +968,7 @@ a {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface);
   color: var(--foreground);
   padding: 11px 12px;
@@ -981,12 +989,12 @@ a {
   min-height: 36px;
   width: fit-content;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--accent);
   color: white;
   padding: 0 14px;
-  font-size: 0.875rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 500;
   line-height: 1;
   text-decoration: none;
   transition:
@@ -1040,7 +1048,7 @@ a {
   align-items: end;
   margin-bottom: 18px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   padding: 12px;
 }
@@ -1058,7 +1066,7 @@ a {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--background);
   color: var(--foreground);
   padding: 8px 10px;
@@ -1081,7 +1089,7 @@ a {
   align-items: center;
   gap: 16px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   padding: 12px;
 }
