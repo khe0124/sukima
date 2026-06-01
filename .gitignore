@@ -6,3 +6,6 @@ coverage/
 .env*.local
 !.env.example
 npm-debug.log*
+
+# Brainstorming visual companion
+.superpowers/
