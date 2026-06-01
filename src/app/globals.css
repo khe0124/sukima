@@ -151,7 +151,7 @@ a {
 .upload-form textarea {
   width: 100%;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface);
   color: var(--foreground);
   padding: 11px 12px;
@@ -175,7 +175,7 @@ a {
   display: grid;
   gap: 8px;
   border: 1px dashed var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   cursor: pointer;
   padding: 22px;
@@ -214,7 +214,7 @@ a {
 .upload-preview-grid li {
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
 }
 
@@ -275,7 +275,7 @@ a {
 
 .check-menu {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   padding: 10px 12px;
 }
@@ -298,7 +298,7 @@ a {
   align-items: center;
   gap: 6px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   cursor: pointer;
   padding: 7px 9px;
   font-size: 0.84rem;
@@ -343,7 +343,7 @@ a {
   display: grid;
   gap: 8px;
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   cursor: pointer;
   padding: 7px;
@@ -377,7 +377,7 @@ a {
   display: block;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--line);
   object-fit: cover;
 }
@@ -439,7 +439,7 @@ a {
   justify-content: space-between;
   gap: 12px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface);
   padding: 9px 10px;
   font-size: 0.84rem;
@@ -494,7 +494,7 @@ a {
 .visibility-control span {
   display: block;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface);
   padding: 9px 12px;
   color: var(--muted);
@@ -533,7 +533,7 @@ a {
   min-height: 36px;
   width: fit-content;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--accent);
   color: white;
   padding: 0 14px;
@@ -594,7 +594,7 @@ a {
   min-height: 36px;
   width: fit-content;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 0;
   padding: 0 14px;
   color: white;
   font: inherit;
@@ -625,7 +625,7 @@ a {
   width: fit-content;
   margin: 0;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--surface), var(--background) 34%);
   padding: 7px 11px;
   color: var(--foreground);
@@ -648,7 +648,7 @@ a {
   justify-content: space-between;
   gap: 12px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface);
   padding: 10px 12px;
 }
@@ -682,7 +682,7 @@ a {
   z-index: 20;
   max-width: min(360px, calc(100vw - 36px));
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   padding: 12px 14px;
   color: var(--foreground);
@@ -722,7 +722,7 @@ a {
   gap: 8px;
   align-content: start;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   cursor: pointer;
   padding: 8px;
@@ -748,7 +748,7 @@ a {
   display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
-  border-radius: 4px;
+  border-radius: 0;
   background: var(--line);
   object-fit: cover;
 }
@@ -774,7 +774,7 @@ a {
 
 .api-docs-card {
   border: 1px solid color-mix(in srgb, var(--line), var(--surface) 22%);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
 }
 
@@ -852,7 +852,7 @@ a {
   min-width: 30px;
   justify-content: center;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 0;
   background: color-mix(in srgb, var(--background), var(--surface) 45%);
   padding: 3px 9px;
   color: var(--muted);
@@ -890,7 +890,7 @@ a {
   min-width: 62px;
   justify-content: center;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 0;
   background: var(--surface);
   padding: 3px 9px;
   color: var(--foreground);
@@ -952,7 +952,7 @@ a {
 .manager-row {
   grid-template-columns: minmax(180px, 1fr) auto auto auto;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   padding: 12px;
 }
@@ -968,7 +968,7 @@ a {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--surface);
   color: var(--foreground);
   padding: 11px 12px;
@@ -989,7 +989,7 @@ a {
   min-height: 36px;
   width: fit-content;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--accent);
   color: white;
   padding: 0 14px;
@@ -1048,7 +1048,7 @@ a {
   align-items: end;
   margin-bottom: 18px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   padding: 12px;
 }
@@ -1066,7 +1066,7 @@ a {
   width: 100%;
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: 0;
   background: var(--background);
   color: var(--foreground);
   padding: 8px 10px;
@@ -1089,7 +1089,7 @@ a {
   align-items: center;
   gap: 16px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--surface);
   padding: 12px;
 }
