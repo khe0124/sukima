@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminCollectionsPage() {
   const [collections, photos] = await Promise.all([
     getCollections(),
-    getPhotos({ limit: "100", cursor: null, includePrivate: true })
+    getPhotos({ limit: "100", page: "1", includePrivate: true })
   ]);
 
   return (

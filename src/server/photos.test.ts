@@ -150,7 +150,7 @@ describe("parsePhotoListQuery", () => {
     expect(
       parsePhotoListQuery({
         limit: "200",
-        cursor: "cursor-photo",
+        page: "3",
         search: "  rainy night  ",
         tag: "Street",
         status: "ready",
@@ -159,7 +159,7 @@ describe("parsePhotoListQuery", () => {
       })
     ).toEqual({
       limit: 100,
-      cursor: "cursor-photo",
+      page: 3,
       search: "rainy night",
       tag: "street",
       status: "ready",
@@ -172,7 +172,7 @@ describe("parsePhotoListQuery", () => {
     expect(
       parsePhotoListQuery({
         limit: "0",
-        cursor: "",
+        page: "0",
         search: "x".repeat(180),
         tag: "",
         status: "deleted",
@@ -181,7 +181,7 @@ describe("parsePhotoListQuery", () => {
       })
     ).toEqual({
       limit: 30,
-      cursor: null,
+      page: 1,
       search: "x".repeat(160),
       tag: null,
       status: null,

@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Pagination } from "@/components/Pagination";
 
 import {
   buildCanonicalUrl,
@@ -16,7 +17,7 @@ import { ViewedPhotoTile } from "./ViewedPhoto";
 export const dynamic = "force-dynamic";
 
 type ArchivePageProps = {
-  searchParams: { cursor?: string; tag?: string };
+  searchParams: { page?: string; tag?: string };
 };
 
 export function generateMetadata({ searchParams }: ArchivePageProps): Metadata {
@@ -53,15 +54,16 @@ export default async function ArchivePage({
   const activeTag = searchParams.tag?.trim() || "";
   const photos = await getPhotos({
     limit: "30",
-    cursor: searchParams.cursor ?? null,
+    page: searchParams.page ?? null,
     tag: activeTag || null,
   });
-  const nextHref = photos.nextCursor
-    ? `/archive?${new URLSearchParams({
-        ...(activeTag ? { tag: activeTag } : {}),
-        cursor: photos.nextCursor,
-      }).toString()}`
-    : "";
+  const buildArchiveHref = (targetPage: number) => {
+    const params = new URLSearchParams();
+    if (activeTag) params.set("tag", activeTag);
+    if (targetPage > 1) params.set("page", String(targetPage));
+    const queryString = params.toString();
+    return queryString ? `/archive?${queryString}` : "/archive";
+  };
   const canonicalPath = activeTag ? `/archive?tag=${encodeURIComponent(activeTag)}` : "/archive";
   const structuredData = {
     "@context": "https://schema.org",
@@ -121,13 +123,11 @@ export default async function ArchivePage({
         <p>No public photos are ready yet.</p>
       )}
 
-      {nextHref ? (
-        <p className="pagination-row">
-          <Link className="button-link secondary" href={nextHref}>
-            More
-          </Link>
-        </p>
-      ) : null}
+      <Pagination
+        buildHref={buildArchiveHref}
+        currentPage={photos.page}
+        totalPages={photos.totalPages}
+      />
     </main>
   );
 }

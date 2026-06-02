@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     const photos = await getPhotos({
       limit: searchParams.get("limit"),
-      cursor: searchParams.get("cursor"),
+      page: searchParams.get("page"),
       includePrivate,
       tag: searchParams.get("tag"),
       search: searchParams.get("search"),

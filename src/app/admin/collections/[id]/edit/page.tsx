@@ -11,7 +11,7 @@ export default async function EditCollectionPage({ params }: { params: { id: str
   const [collection, photoIds, photos] = await Promise.all([
     getCollectionById(params.id),
     getCollectionPhotoIds(params.id),
-    getPhotos({ limit: "100", cursor: null, includePrivate: true })
+    getPhotos({ limit: "100", page: "1", includePrivate: true })
   ]);
 
   if (!collection) {

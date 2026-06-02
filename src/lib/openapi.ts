@@ -301,10 +301,10 @@ export function buildOpenApiDocument(): OpenApiDocument {
       "/api/photos": {
         get: operation({
           tags: ["Photos"],
-          summary: "List photos with cursor pagination.",
+          summary: "List photos with page-based pagination.",
           parameters: [
             { name: "limit", in: "query", schema: { type: "integer", default: 30, maximum: 100 } },
-            { name: "cursor", in: "query", schema: { type: "string" } },
+            { name: "page", in: "query", schema: { type: "integer", default: 1, minimum: 1 } },
             { name: "tag", in: "query", schema: { type: "string" } },
             { name: "search", in: "query", schema: { type: "string" } },
             { name: "status", in: "query", schema: { type: "string" } },
@@ -320,7 +320,10 @@ export function buildOpenApiDocument(): OpenApiDocument {
                     type: "object",
                     properties: {
                       items: { type: "array", items: { $ref: "#/components/schemas/Photo" } },
-                      nextCursor: { type: ["string", "null"] }
+                      page: { type: "integer" },
+                      pageSize: { type: "integer" },
+                      total: { type: "integer" },
+                      totalPages: { type: "integer" }
                     }
                   }
                 }
