@@ -4,6 +4,7 @@ import {
   MAX_UPLOAD_BYTES,
   buildOriginalStorageKey,
   normalizePhotoListLimit,
+  normalizePhotoListPage,
   parseUploadUrlRequest,
   toPublicPhotoUrl
 } from "./photos";
@@ -63,6 +64,21 @@ describe("normalizePhotoListLimit", () => {
     expect(normalizePhotoListLimit(null)).toBe(30);
     expect(normalizePhotoListLimit("200")).toBe(100);
     expect(normalizePhotoListLimit("12")).toBe(12);
+  });
+});
+
+describe("normalizePhotoListPage", () => {
+  it("defaults to page 1 for missing, zero, negative, or non-numeric input", () => {
+    expect(normalizePhotoListPage(null)).toBe(1);
+    expect(normalizePhotoListPage("")).toBe(1);
+    expect(normalizePhotoListPage("0")).toBe(1);
+    expect(normalizePhotoListPage("-3")).toBe(1);
+    expect(normalizePhotoListPage("abc")).toBe(1);
+  });
+
+  it("parses a valid 1-indexed page number", () => {
+    expect(normalizePhotoListPage("1")).toBe(1);
+    expect(normalizePhotoListPage("7")).toBe(7);
   });
 });
 

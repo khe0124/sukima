@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import { Pagination } from "@/components/Pagination";
 
 import { getPhotos } from "@/server/photos";
 
@@ -11,7 +12,7 @@ export default async function AdminPhotosPage({
   searchParams
 }: {
   searchParams: {
-    cursor?: string;
+    page?: string;
     limit?: string;
     search?: string;
     tag?: string;
@@ -28,7 +29,7 @@ export default async function AdminPhotosPage({
   const sort = searchParams.sort ?? "newest";
   const photos = await getPhotos({
     limit,
-    cursor: searchParams.cursor ?? null,
+    page: searchParams.page ?? null,
     includePrivate: true,
     search: search || null,
     tag: tag || null,
@@ -36,12 +37,15 @@ export default async function AdminPhotosPage({
     visibility: visibility || null,
     sort
   });
-  const nextParams = new URLSearchParams();
-
-  for (const [key, value] of Object.entries({ limit, search, tag, status, visibility, sort })) {
-    if (value) nextParams.set(key, value);
-  }
-  if (photos.nextCursor) nextParams.set("cursor", photos.nextCursor);
+  const buildAdminHref = (targetPage: number) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries({ limit, search, tag, status, visibility, sort })) {
+      if (value) params.set(key, value);
+    }
+    if (targetPage > 1) params.set("page", String(targetPage));
+    const queryString = params.toString();
+    return queryString ? `/admin/photos?${queryString}` : "/admin/photos";
+  };
 
   return (
     <main className="shell w-[min(1180px,calc(100%_-_32px))]">
@@ -150,13 +154,11 @@ export default async function AdminPhotosPage({
         <p>No photos yet.</p>
       )}
 
-      {photos.nextCursor ? (
-        <p className="pagination-row">
-          <Link className="button-link secondary" href={`/admin/photos?${nextParams.toString()}`}>
-            Next page
-          </Link>
-        </p>
-      ) : null}
+      <Pagination
+        buildHref={buildAdminHref}
+        currentPage={photos.page}
+        totalPages={photos.totalPages}
+      />
     </main>
   );
 }

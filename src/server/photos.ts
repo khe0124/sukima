@@ -5,7 +5,12 @@ import { z } from "zod";
 
 import { getPool, query } from "@/lib/db";
 import { buildProcessedStorageKeys, generateProcessedImages } from "@/lib/image-processing";
-import { ALLOWED_IMAGE_TYPES, normalizePhotoListLimit, toPublicPhotoUrl } from "@/lib/photos";
+import {
+  ALLOWED_IMAGE_TYPES,
+  normalizePhotoListLimit,
+  normalizePhotoListPage,
+  toPublicPhotoUrl
+} from "@/lib/photos";
 import { createOriginalDownloadUrl, readPrivateObject, writePublicObject } from "@/lib/r2";
 import { slugify } from "@/lib/slug";
 import type { PhotoAssetListItem, PhotoListItem } from "@/types/photo";
@@ -157,7 +162,7 @@ type PhotoListSort = (typeof photoListSorts)[number];
 
 type PhotoListQueryInput = {
   limit?: string | null;
-  cursor?: string | null;
+  page?: string | null;
   tag?: string | null;
   search?: string | null;
   status?: string | null;
@@ -190,7 +195,7 @@ export function parsePhotoListQuery(input: PhotoListQueryInput) {
 
   return {
     limit: normalizePhotoListLimit(input.limit ?? null),
-    cursor: normalizeTextQuery(input.cursor, 120),
+    page: normalizePhotoListPage(input.page ?? null),
     search: normalizeTextQuery(input.search, 160),
     tag: tagSlug ? slugify(tagSlug) || null : null,
     status: isPhotoListStatus(status) ? status : null,
@@ -410,7 +415,7 @@ export async function createPhoto(input: unknown) {
 
 export async function getPhotos({
   limit,
-  cursor,
+  page,
   includePrivate = false,
   tag,
   search,
@@ -419,7 +424,7 @@ export async function getPhotos({
   sort
 }: {
   limit: string | null;
-  cursor: string | null;
+  page: string | null;
   includePrivate?: boolean;
   tag?: string | null;
   search?: string | null;
@@ -427,23 +432,23 @@ export async function getPhotos({
   visibility?: string | null;
   sort?: string | null;
 }) {
-  const listQuery = parsePhotoListQuery({ limit, cursor, tag, search, status, visibility, sort });
-  const values: unknown[] = [listQuery.limit + 1];
+  const listQuery = parsePhotoListQuery({ limit, page, tag, search, status, visibility, sort });
+  const filterValues: unknown[] = [];
   const where = [includePrivate ? "p.status <> 'deleted'" : "p.visibility = 'public' AND p.status = 'ready'"];
 
   if (includePrivate && listQuery.status) {
-    values.push(listQuery.status);
-    where.push(`p.status = $${values.length}`);
+    filterValues.push(listQuery.status);
+    where.push(`p.status = $${filterValues.length}`);
   }
 
   if (includePrivate && listQuery.visibility) {
-    values.push(listQuery.visibility);
-    where.push(`p.visibility = $${values.length}`);
+    filterValues.push(listQuery.visibility);
+    where.push(`p.visibility = $${filterValues.length}`);
   }
 
   if (listQuery.search) {
-    values.push(`%${listQuery.search}%`);
-    const searchValue = `$${values.length}`;
+    filterValues.push(`%${listQuery.search}%`);
+    const searchValue = `$${filterValues.length}`;
     where.push(
       `(p.title ILIKE ${searchValue}
         OR p.description ILIKE ${searchValue}
@@ -457,34 +462,29 @@ export async function getPhotos({
   }
 
   if (listQuery.tag) {
-    values.push(listQuery.tag);
+    filterValues.push(listQuery.tag);
     where.push(
       `EXISTS (
         SELECT 1
         FROM photo_tags filter_pt
         JOIN tags filter_t ON filter_t.id = filter_pt.tag_id
-        WHERE filter_pt.photo_id = p.id AND filter_t.slug = $${values.length}
+        WHERE filter_pt.photo_id = p.id AND filter_t.slug = $${filterValues.length}
       )`
     );
   }
 
-  const cursorClauseBySort: Record<PhotoListSort, string> = {
-    newest: "(p.uploaded_at, p.id) < ((SELECT cursor_photo.uploaded_at FROM photos cursor_photo WHERE cursor_photo.id = $cursor), $cursor)",
-    oldest: "(p.uploaded_at, p.id) > ((SELECT cursor_photo.uploaded_at FROM photos cursor_photo WHERE cursor_photo.id = $cursor), $cursor)",
-    "taken-newest":
-      "(COALESCE(p.taken_at, p.uploaded_at), p.id) < ((SELECT COALESCE(cursor_photo.taken_at, cursor_photo.uploaded_at) FROM photos cursor_photo WHERE cursor_photo.id = $cursor), $cursor)",
-    "taken-oldest":
-      "(COALESCE(p.taken_at, p.uploaded_at), p.id) > ((SELECT COALESCE(cursor_photo.taken_at, cursor_photo.uploaded_at) FROM photos cursor_photo WHERE cursor_photo.id = $cursor), $cursor)",
-    "title-asc":
-      "(COALESCE(LOWER(p.title), ''), p.id) > ((SELECT COALESCE(LOWER(cursor_photo.title), '') FROM photos cursor_photo WHERE cursor_photo.id = $cursor), $cursor)",
-    "title-desc":
-      "(COALESCE(LOWER(p.title), ''), p.id) < ((SELECT COALESCE(LOWER(cursor_photo.title), '') FROM photos cursor_photo WHERE cursor_photo.id = $cursor), $cursor)"
-  };
+  const whereClause = where.join(" AND ");
 
-  if (listQuery.cursor) {
-    values.push(listQuery.cursor);
-    where.push(cursorClauseBySort[listQuery.sort].replaceAll("$cursor", `$${values.length}`));
-  }
+  const countResult = await query<{ total: string }>(
+    `SELECT COUNT(*) AS total FROM photos p WHERE ${whereClause}`,
+    filterValues
+  );
+  const total = Number.parseInt(countResult.rows[0]?.total ?? "0", 10);
+
+  const pageSize = listQuery.limit;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const resolvedPage = Math.min(listQuery.page, totalPages);
+  const offset = (resolvedPage - 1) * pageSize;
 
   const orderByBySort: Record<PhotoListSort, string> = {
     newest: "p.uploaded_at DESC, p.id DESC",
@@ -495,6 +495,7 @@ export async function getPhotos({
     "title-desc": "COALESCE(LOWER(p.title), '') DESC, p.id DESC"
   };
 
+  const pageValues = [...filterValues, pageSize, offset];
   const result = await query<PhotoRow>(
     `SELECT
        p.id,
@@ -515,20 +516,16 @@ export async function getPhotos({
      FROM photos p
      LEFT JOIN photo_tags pt ON pt.photo_id = p.id
      LEFT JOIN tags t ON t.id = pt.tag_id
-     WHERE ${where.join(" AND ")}
+     WHERE ${whereClause}
      GROUP BY p.id
      ORDER BY ${orderByBySort[listQuery.sort]}
-     LIMIT $1`,
-    values
+     LIMIT $${pageValues.length - 1} OFFSET $${pageValues.length}`,
+    pageValues
   );
 
-  const rows = result.rows.slice(0, listQuery.limit);
-  const items: PhotoListItem[] = rows.map(mapPhotoRow);
+  const items: PhotoListItem[] = result.rows.map(mapPhotoRow);
 
-  return {
-    items,
-    nextCursor: result.rows.length > listQuery.limit ? rows[rows.length - 1]?.id ?? null : null
-  };
+  return { items, page: resolvedPage, pageSize, total, totalPages };
 }
 
 export async function getPhotoBySlug(slug: string) {

@@ -77,6 +77,15 @@ export function normalizePhotoListLimit(value: string | null) {
   return Math.min(parsed, 100);
 }
 
+export function normalizePhotoListPage(value: string | null) {
+  if (!value) return 1;
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+
+  return parsed;
+}
+
 export function toPublicPhotoUrl(storageKey: string | null) {
   if (!storageKey) return null;
 
