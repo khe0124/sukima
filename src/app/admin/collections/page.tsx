@@ -12,7 +12,7 @@ export default async function AdminCollectionsPage() {
   ]);
 
   return (
-    <main className="shell w-[min(1180px,calc(100%_-_32px))]">
+    <main className="shell shell-wide">
       <section className="page-heading">
         <p className="eyebrow">Admin</p>
         <h1>Collections</h1>

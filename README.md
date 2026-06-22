@@ -14,8 +14,8 @@ Personal photo archive MVP built with Next.js, PostgreSQL, and Cloudflare R2.
 - Provide admin tag management at `/admin/tags`.
 - Provide admin collection management at `/admin/collections`.
 - Generate short-lived signed URLs for admin original downloads.
-- Render public archive and detail pages at `/archive` and `/archive/[slug]`.
-- Filter public archive pages by tag with `/archive?tag=...`.
+- Render the public archive grid at `/` and detail pages at `/archive/[slug]`.
+- Filter public archive photos by tag with `/?tag=...`.
 - Render public collection pages at `/collections` and `/collections/[slug]`.
 - Provide a logout button in the admin navigation.
 
@@ -92,8 +92,8 @@ private R2 original -> public WebP variants -> DB status ready
 Public pages:
 
 ```txt
-http://localhost:3000/archive
-http://localhost:3000/archive?tag=street
+http://localhost:3000/
+http://localhost:3000/?tag=street
 http://localhost:3000/archive/[slug]
 http://localhost:3000/collections
 http://localhost:3000/collections/[slug]

@@ -2,6 +2,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import React from "react";
 import { cache } from "react";
 
 import {
@@ -9,20 +10,24 @@ import {
   buildPhotoStructuredData,
   getSeoDescription,
   getSeoTitle,
-  serializeJsonLd
+  serializeJsonLd,
 } from "@/lib/seo";
-import { getPhotoBySlugWithAssets } from "@/server/photos";
-
-import { ViewedPhotoMarker } from "../ViewedPhoto";
+import {
+  getPhotoBySlugWithAssets,
+  getPublicPhotoNeighbors,
+} from "@/server/photos";
 
 export const dynamic = "force-dynamic";
 const getCachedPhotoBySlugWithAssets = cache(getPhotoBySlugWithAssets);
+const getCachedPublicPhotoNeighbors = cache(getPublicPhotoNeighbors);
 
 type PhotoDetailPageProps = {
   params: { slug: string };
 };
 
-export async function generateMetadata({ params }: PhotoDetailPageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: PhotoDetailPageProps): Promise<Metadata> {
   const photo = await getCachedPhotoBySlugWithAssets(params.slug);
 
   if (!photo) {
@@ -30,20 +35,22 @@ export async function generateMetadata({ params }: PhotoDetailPageProps): Promis
       title: "Photo Not Found",
       robots: {
         index: false,
-        follow: false
-      }
+        follow: false,
+      },
     };
   }
 
   const title = photo.title || "Untitled Photo";
-  const description = getSeoDescription(photo.description || `${title} from Sukima Photo Archive.`);
+  const description = getSeoDescription(
+    photo.description || `${title} from Sukima Photo Archive.`,
+  );
   const imageUrl = photo.largeUrl || photo.mediumUrl || photo.thumbnailUrl;
 
   return {
     title,
     description,
     alternates: {
-      canonical: `/archive/${params.slug}`
+      canonical: `/archive/${params.slug}`,
     },
     openGraph: {
       type: "article",
@@ -56,17 +63,17 @@ export async function generateMetadata({ params }: PhotoDetailPageProps): Promis
         ? [
             {
               url: imageUrl,
-              alt: title
-            }
+              alt: title,
+            },
           ]
-        : undefined
+        : undefined,
     },
     twitter: {
       card: imageUrl ? "summary_large_image" : "summary",
       title: getSeoTitle(title),
       description,
-      images: imageUrl ? [imageUrl] : undefined
-    }
+      images: imageUrl ? [imageUrl] : undefined,
+    },
   };
 }
 
@@ -79,6 +86,7 @@ export default async function PhotoDetailPage({
     notFound();
   }
 
+  const photoNeighbors = await getCachedPublicPhotoNeighbors(params.slug);
   const imageUrl = photo.largeUrl || photo.mediumUrl || photo.thumbnailUrl;
   const structuredData = buildPhotoStructuredData({
     slug: photo.slug,
@@ -89,16 +97,18 @@ export default async function PhotoDetailPage({
     height: photo.height,
     takenAt: photo.takenAt,
     uploadedAt: photo.uploadedAt,
-    tags: photo.tags
+    tags: photo.tags,
   });
 
   return (
     <main className="shell w-[min(720px,calc(100%_-_32px))]">
+      <Link className="button-link secondary self-start" href="/">
+        ← Archive
+      </Link>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }}
       />
-      <ViewedPhotoMarker photoId={photo.id} />
       <section className="self-start">
         <p className="eyebrow">Photo</p>
         <h1>{photo.title || "Untitled"}</h1>
@@ -125,7 +135,7 @@ export default async function PhotoDetailPage({
               >
                 <Link
                   className="text-inherit no-underline"
-                  href={`/archive?tag=${encodeURIComponent(tag)}`}
+                  href={`/?tag=${encodeURIComponent(tag)}`}
                 >
                   {tag}
                 </Link>
@@ -133,38 +143,70 @@ export default async function PhotoDetailPage({
             ))}
           </ul>
         ) : null}
-        {imageUrl ? (
-          <img
-            alt={photo.title || "Archived photo"}
-            className="block h-auto max-h-[calc(100vh_-_64px)] w-full bg-[var(--line)] object-contain"
-            height={photo.height || 1200}
-            src={imageUrl}
-            width={photo.width || 1800}
-          />
-        ) : null}
-        {photo.assets &&
-        photo.assets.filter((asset) => !asset.isPrimary).length > 0 ? (
-          <div className="mt-6 grid gap-3" aria-label="Additional images">
-            {photo.assets
-              .filter((asset) => !asset.isPrimary)
-              .map((asset) => {
-                const assetUrl =
-                  asset.largeUrl || asset.mediumUrl || asset.thumbnailUrl;
+        <div className="mt-6">
+          {photo.assets &&
+          photo.assets.filter((asset) => !asset.isPrimary).length > 0 ? (
+            <div
+              className="grid grid-cols-2 gap-4"
+              aria-label="Additional images"
+            >
+              {photo.assets
+                .filter((asset) => !asset.isPrimary)
+                .map((asset) => {
+                  const assetUrl =
+                    asset.largeUrl || asset.mediumUrl || asset.thumbnailUrl;
 
-                return assetUrl ? (
-                  <img
-                    alt=""
-                    className="block h-auto w-full bg-[var(--line)]"
-                    height={asset.height || 900}
-                    key={asset.id}
-                    src={assetUrl}
-                    width={asset.width || 1200}
-                  />
-                ) : null;
-              })}
-          </div>
-        ) : null}
+                  return assetUrl ? (
+                    <img
+                      alt=""
+                      className="block h-auto w-full bg-[var(--line)]"
+                      height={asset.height || 900}
+                      key={asset.id}
+                      src={assetUrl}
+                      width={asset.width || 1200}
+                    />
+                  ) : null;
+                })}
+            </div>
+          ) : null}
+        </div>
       </section>
+      <div className="w-full items-center justify-center">
+        <nav
+          aria-label="Photo navigation"
+          className="mt-8 flex w-full flex-wrap items-center justify-center gap-3 border-t border-[var(--line)] pt-6"
+        >
+          {photoNeighbors.previous ? (
+            <Link
+              aria-label={`Previous photo: ${photoNeighbors.previous.title || "Untitled"}`}
+              className="button-link secondary"
+              href={`/archive/${photoNeighbors.previous.slug}`}
+            >
+              Previous
+            </Link>
+          ) : (
+            <span aria-disabled="true" className="button-link secondary">
+              Previous
+            </span>
+          )}
+          <Link className="button-link" href="/">
+            Archive
+          </Link>
+          {photoNeighbors.next ? (
+            <Link
+              aria-label={`Next photo: ${photoNeighbors.next.title || "Untitled"}`}
+              className="button-link secondary"
+              href={`/archive/${photoNeighbors.next.slug}`}
+            >
+              Next
+            </Link>
+          ) : (
+            <span aria-disabled="true" className="button-link secondary">
+              Next
+            </span>
+          )}
+        </nav>
+      </div>
     </main>
   );
 }

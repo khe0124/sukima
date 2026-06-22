@@ -77,7 +77,8 @@ const updatePhotoSchema = z.object({
   tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
   visibility: z.enum(["private", "public", "unlisted", "draft"]).optional(),
   collectionIds: z.array(z.string().uuid()).max(20).optional(),
-  primaryAssetId: z.string().uuid().optional()
+  primaryAssetId: z.string().uuid().optional(),
+  deletedAssetIds: z.array(z.string().uuid()).max(100).optional()
 });
 
 const createPhotoAssetSchema = z.object({
@@ -125,6 +126,12 @@ type PhotoSitemapRow = {
   uploaded_at: Date | null;
 };
 
+type PhotoNeighborRow = {
+  slug: string;
+  title: string | null;
+  relation: "previous" | "next";
+};
+
 type PhotoAssetRow = {
   id: string;
   photo_id: string;
@@ -150,6 +157,11 @@ type PrimaryPhotoAssetRow = {
   height: number | null;
   file_size: number | null;
   mime_type: string | null;
+};
+
+type DeletedPhotoAssetRow = {
+  id: string;
+  is_primary: boolean;
 };
 
 const photoStatuses = ["pending", "uploading", "processing", "ready", "failed"] as const;
@@ -200,7 +212,7 @@ export function parsePhotoListQuery(input: PhotoListQueryInput) {
     tag: tagSlug ? slugify(tagSlug) || null : null,
     status: isPhotoListStatus(status) ? status : null,
     visibility: isPhotoListVisibility(visibility) ? visibility : null,
-    sort: isPhotoListSort(sort) ? sort : "newest"
+    sort: isPhotoListSort(sort) ? sort : "taken-newest"
   };
 }
 
@@ -316,6 +328,75 @@ async function replacePhotoCollections(client: PoolClient, photoId: string, coll
       [collectionId, photoId]
     );
   }
+}
+
+async function setPrimaryPhotoAsset(client: PoolClient, photoId: string, assetId: string) {
+  const selectedAsset = await client.query<PrimaryPhotoAssetRow>(
+    `SELECT
+       id,
+       storage_key_original,
+       storage_key_thumbnail,
+       storage_key_medium,
+       storage_key_large,
+       storage_key_blur,
+       width,
+       height,
+       file_size,
+       mime_type
+     FROM photo_assets
+     WHERE id = $1 AND photo_id = $2
+     LIMIT 1`,
+    [assetId, photoId]
+  );
+  const asset = selectedAsset.rows[0];
+
+  if (!asset) {
+    throw new Error("Photo asset not found.");
+  }
+
+  if (!asset.storage_key_thumbnail && !asset.storage_key_medium && !asset.storage_key_large) {
+    throw new Error("Representative image is not ready.");
+  }
+
+  await client.query(
+    `UPDATE photo_assets
+     SET is_primary = FALSE, updated_at = NOW()
+     WHERE photo_id = $1`,
+    [photoId]
+  );
+  await client.query(
+    `UPDATE photo_assets
+     SET is_primary = TRUE, updated_at = NOW()
+     WHERE id = $1 AND photo_id = $2`,
+    [assetId, photoId]
+  );
+  await client.query(
+    `UPDATE photos
+     SET
+       storage_key_original = $2,
+       storage_key_thumbnail = $3,
+       storage_key_medium = $4,
+       storage_key_large = $5,
+       storage_key_blur = $6,
+       width = $7,
+       height = $8,
+       file_size = $9,
+       mime_type = $10,
+       updated_at = NOW()
+     WHERE id = $1`,
+    [
+      photoId,
+      asset.storage_key_original,
+      asset.storage_key_thumbnail,
+      asset.storage_key_medium,
+      asset.storage_key_large,
+      asset.storage_key_blur,
+      asset.width,
+      asset.height,
+      asset.file_size,
+      asset.mime_type
+    ]
+  );
 }
 
 export async function createPhoto(input: unknown) {
@@ -487,7 +568,7 @@ export async function getPhotos({
   const offset = (resolvedPage - 1) * pageSize;
 
   const orderByBySort: Record<PhotoListSort, string> = {
-    newest: "p.uploaded_at DESC, p.id DESC",
+    newest: "COALESCE(p.taken_at, p.uploaded_at) DESC, p.id DESC",
     oldest: "p.uploaded_at ASC, p.id ASC",
     "taken-newest": "COALESCE(p.taken_at, p.uploaded_at) DESC, p.id DESC",
     "taken-oldest": "COALESCE(p.taken_at, p.uploaded_at) ASC, p.id ASC",
@@ -559,6 +640,39 @@ export async function getPhotoBySlug(slug: string) {
   if (!row) return null;
 
   return mapPhotoRow(row);
+}
+
+export async function getPublicPhotoNeighbors(slug: string) {
+  const result = await query<PhotoNeighborRow>(
+    `WITH ordered_photos AS (
+       SELECT
+         p.slug,
+         p.title,
+         ROW_NUMBER() OVER (ORDER BY COALESCE(p.taken_at, p.uploaded_at) DESC, p.id DESC) AS position
+       FROM photos p
+       WHERE p.visibility = 'public' AND p.status = 'ready' AND p.slug IS NOT NULL
+     ),
+     current_photo AS (
+       SELECT position
+       FROM ordered_photos
+       WHERE slug = $1
+     )
+     SELECT o.slug, o.title, 'previous' AS relation
+     FROM ordered_photos o
+     CROSS JOIN current_photo c
+     WHERE o.position = c.position - 1
+     UNION ALL
+     SELECT o.slug, o.title, 'next' AS relation
+     FROM ordered_photos o
+     CROSS JOIN current_photo c
+     WHERE o.position = c.position + 1`,
+    [slug]
+  );
+
+  return {
+    previous: result.rows.find((row) => row.relation === "previous") ?? null,
+    next: result.rows.find((row) => row.relation === "next") ?? null
+  };
 }
 
 export async function getPublicPhotoSitemapEntries() {
@@ -679,73 +793,58 @@ export async function updatePhoto(photoId: string, input: unknown) {
       await replacePhotoCollections(client, photoId, parsed.collectionIds);
     }
 
-    if (parsed.primaryAssetId) {
-      const selectedAsset = await client.query<PrimaryPhotoAssetRow>(
-        `SELECT
-           id,
-           storage_key_original,
-           storage_key_thumbnail,
-           storage_key_medium,
-           storage_key_large,
-           storage_key_blur,
-           width,
-           height,
-           file_size,
-           mime_type
-         FROM photo_assets
-         WHERE id = $1 AND photo_id = $2
-         LIMIT 1`,
-        [parsed.primaryAssetId, photoId]
-      );
-      const asset = selectedAsset.rows[0];
+    const deletedAssetIds = parsed.deletedAssetIds ?? [];
+    let deletedPrimaryAsset = false;
 
-      if (!asset) {
+    if (deletedAssetIds.length > 0) {
+      const remainingAssetCount = await client.query<{ count: string }>(
+        `SELECT COUNT(*) AS count
+         FROM photo_assets
+         WHERE photo_id = $1 AND NOT (id = ANY($2::text[]))`,
+        [photoId, deletedAssetIds]
+      );
+
+      if (Number.parseInt(remainingAssetCount.rows[0]?.count ?? "0", 10) === 0) {
+        throw new Error("At least one photo image is required.");
+      }
+
+      const deletedAssets = await client.query<DeletedPhotoAssetRow>(
+        `DELETE FROM photo_assets
+         WHERE photo_id = $1 AND id = ANY($2::text[])
+         RETURNING id, is_primary`,
+        [photoId, deletedAssetIds]
+      );
+
+      if (deletedAssets.rows.length !== deletedAssetIds.length) {
         throw new Error("Photo asset not found.");
       }
 
-      if (!asset.storage_key_thumbnail && !asset.storage_key_medium && !asset.storage_key_large) {
+      deletedPrimaryAsset = deletedAssets.rows.some((asset) => asset.is_primary);
+      await client.query("UPDATE photos SET updated_at = NOW() WHERE id = $1", [photoId]);
+    }
+
+    if (parsed.primaryAssetId) {
+      await setPrimaryPhotoAsset(client, photoId, parsed.primaryAssetId);
+    } else if (deletedPrimaryAsset) {
+      const replacementAsset = await client.query<{ id: string }>(
+        `SELECT id
+         FROM photo_assets
+         WHERE photo_id = $1
+           AND (
+             storage_key_thumbnail IS NOT NULL
+             OR storage_key_medium IS NOT NULL
+             OR storage_key_large IS NOT NULL
+           )
+         ORDER BY sort_order ASC, created_at ASC
+         LIMIT 1`,
+        [photoId]
+      );
+
+      if (!replacementAsset.rows[0]) {
         throw new Error("Representative image is not ready.");
       }
 
-      await client.query(
-        `UPDATE photo_assets
-         SET is_primary = FALSE, updated_at = NOW()
-         WHERE photo_id = $1`,
-        [photoId]
-      );
-      await client.query(
-        `UPDATE photo_assets
-         SET is_primary = TRUE, updated_at = NOW()
-         WHERE id = $1 AND photo_id = $2`,
-        [parsed.primaryAssetId, photoId]
-      );
-      await client.query(
-        `UPDATE photos
-         SET
-           storage_key_original = $2,
-           storage_key_thumbnail = $3,
-           storage_key_medium = $4,
-           storage_key_large = $5,
-           storage_key_blur = $6,
-           width = $7,
-           height = $8,
-           file_size = $9,
-           mime_type = $10,
-           updated_at = NOW()
-         WHERE id = $1`,
-        [
-          photoId,
-          asset.storage_key_original,
-          asset.storage_key_thumbnail,
-          asset.storage_key_medium,
-          asset.storage_key_large,
-          asset.storage_key_blur,
-          asset.width,
-          asset.height,
-          asset.file_size,
-          asset.mime_type
-        ]
-      );
+      await setPrimaryPhotoAsset(client, photoId, replacementAsset.rows[0].id);
     }
 
     await client.query("COMMIT");

@@ -39,7 +39,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const status =
       message === "Photo not found." || message === "Photo asset not found."
         ? 404
-        : message === "Representative image is not ready."
+        : message === "Representative image is not ready." || message === "At least one photo image is required."
           ? 400
           : getApiErrorStatus(message);
     return NextResponse.json({ error: message }, { status });
