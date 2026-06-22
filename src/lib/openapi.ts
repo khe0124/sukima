@@ -577,6 +577,34 @@ export function buildOpenApiDocument(): OpenApiDocument {
           responses: { "200": okResponse, "400": errorResponse, "401": errorResponse, "403": errorResponse }
         }
       },
+      "/api/admin/auth/google": {
+        get: {
+          summary: "Start Google admin login.",
+          tags: ["Admin"],
+          responses: {
+            "307": {
+              description: "Redirect to Google OAuth consent."
+            },
+            "500": errorResponse
+          }
+        }
+      },
+      "/api/admin/auth/google/callback": {
+        get: {
+          summary: "Complete Google admin login.",
+          tags: ["Admin"],
+          parameters: [
+            { name: "code", in: "query", schema: { type: "string" } },
+            { name: "state", in: "query", schema: { type: "string" } }
+          ],
+          responses: {
+            "303": {
+              description: "Redirect to admin photos or login error."
+            },
+            "500": errorResponse
+          }
+        }
+      },
       "/api/admin/logout": {
         post: operation({
           tags: ["Admin"],

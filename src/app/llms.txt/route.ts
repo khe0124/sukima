@@ -10,7 +10,7 @@ ${getDefaultSeoDescription()}
 
 ## Public sections
 
-- Archive: ${siteUrl}/archive
+- Archive: ${siteUrl}/
 - Collections: ${siteUrl}/collections
 - Sitemap: ${siteUrl}/sitemap.xml
 

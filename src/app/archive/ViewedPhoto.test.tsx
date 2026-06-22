@@ -2,22 +2,14 @@
 
 import "@testing-library/jest-dom/vitest";
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 
-import { ViewedPhotoMarker, ViewedPhotoTile, VIEWED_PHOTOS_STORAGE_KEY } from "./ViewedPhoto";
+import { ViewedPhotoTile } from "./ViewedPhoto";
 
 describe("ViewedPhoto", () => {
-  beforeEach(() => {
-    window.localStorage.clear();
-  });
-
-  afterEach(() => {
-    window.localStorage.clear();
-  });
-
-  it("renders a viewed photo image in grayscale", async () => {
-    window.localStorage.setItem(VIEWED_PHOTOS_STORAGE_KEY, JSON.stringify(["photo-1"]));
+  it("renders photo thumbnails without viewed-state effects", () => {
+    window.localStorage.setItem("sukima:viewed-photo-ids", JSON.stringify(["photo-1"]));
 
     render(
       <ViewedPhotoTile
@@ -33,16 +25,48 @@ describe("ViewedPhoto", () => {
       />
     );
 
-    await waitFor(() => {
-      expect(screen.getByRole("img", { name: "Viewed photo" })).toHaveClass("grayscale");
-    });
+    expect(screen.getByRole("img", { name: "Viewed photo" })).not.toHaveClass("grayscale");
   });
 
-  it("records a viewed photo id in localStorage", async () => {
-    render(<ViewedPhotoMarker photoId="photo-2" />);
+  it("zooms the image on hover while keeping the tile frame fixed", () => {
+    render(
+      <ViewedPhotoTile
+        href="/archive/photo-1"
+        imageUrl="https://cdn.example/photo-1.webp"
+        photo={{
+          id: "photo-1",
+          title: "Viewed photo",
+          width: 1200,
+          height: 900,
+          tags: []
+        }}
+      />
+    );
 
-    await waitFor(() => {
-      expect(JSON.parse(window.localStorage.getItem(VIEWED_PHOTOS_STORAGE_KEY) || "[]")).toContain("photo-2");
-    });
+    const image = screen.getByRole("img", { name: "Viewed photo" });
+
+    expect(image.parentElement).toHaveClass("overflow-hidden");
+    expect(image).toHaveClass("hover:scale-125");
+  });
+
+  it("links photo tags to the filtered archive", () => {
+    render(
+      <ViewedPhotoTile
+        href="/archive/photo-1"
+        imageUrl="https://cdn.example/photo-1.webp"
+        photo={{
+          id: "photo-1",
+          title: "Viewed photo",
+          width: 1200,
+          height: 900,
+          tags: ["seoul night"]
+        }}
+      />
+    );
+
+    expect(screen.getByRole("link", { name: "#seoul night" })).toHaveAttribute(
+      "href",
+      "/?tag=seoul%20night"
+    );
   });
 });

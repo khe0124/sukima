@@ -77,14 +77,14 @@ describe("EditPhotoForm", () => {
 
     expect(screen.getByRole("group", { name: "Representative image" })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: "Representative image 1" })).toBeChecked();
-    expect(screen.getByRole("radio", { name: "Representative image 1" }).closest("label")).toHaveAttribute(
+    expect(screen.getByRole("radio", { name: "Representative image 1" }).closest(".representative-gallery-item")).toHaveAttribute(
       "data-selected",
       "true",
     );
 
     fireEvent.click(screen.getByRole("radio", { name: "Representative image 2" }));
     expect(screen.getByRole("radio", { name: "Representative image 2" })).toBeChecked();
-    expect(screen.getByRole("radio", { name: "Representative image 2" }).closest("label")).toHaveAttribute(
+    expect(screen.getByRole("radio", { name: "Representative image 2" }).closest(".representative-gallery-item")).toHaveAttribute(
       "data-selected",
       "true",
     );
@@ -98,6 +98,33 @@ describe("EditPhotoForm", () => {
           method: "PATCH",
           body: expect.stringContaining(
             '"primaryAssetId":"660e8400-e29b-41d4-a716-446655440001"',
+          ),
+        }),
+      );
+    });
+  });
+
+  it("removes an image from the edit list and submits deleted asset ids on save", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ ok: true })));
+
+    render(<EditPhotoForm photo={photo} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete image 2" }));
+
+    expect(screen.queryByRole("radio", { name: "Representative image 2" })).not.toBeInTheDocument();
+    expect(screen.getByRole("status").textContent).toBe(
+      "Image removed from this edit. Save to delete it from the post.",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith(
+        "/api/photos/550e8400-e29b-41d4-a716-446655440000",
+        expect.objectContaining({
+          method: "PATCH",
+          body: expect.stringContaining(
+            '"deletedAssetIds":["660e8400-e29b-41d4-a716-446655440001"]',
           ),
         }),
       );

@@ -56,7 +56,7 @@ export default async function CollectionsPage() {
   };
 
   return (
-    <main className="shell w-[min(1180px,calc(100%_-_32px))]">
+    <main className="shell shell-wide">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }}
@@ -81,7 +81,6 @@ export default async function CollectionsPage() {
                   className="block aspect-[4/3] h-auto w-full bg-[var(--line)] object-cover"
                   height={900}
                   imageUrl={collection.coverImageUrl}
-                  photoId={collection.coverPhotoId}
                   width={1200}
                 />
               ) : collection.coverImageUrl ? (

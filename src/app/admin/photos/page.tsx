@@ -5,11 +5,13 @@ import { Pagination } from "@/components/Pagination";
 import { getPhotos } from "@/server/photos";
 
 import DeletePhotoButton from "./DeletePhotoButton";
+import PhotoTitleEditor from "./PhotoTitleEditor";
+import { Edit2Icon } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminPhotosPage({
-  searchParams
+  searchParams,
 }: {
   searchParams: {
     page?: string;
@@ -35,11 +37,18 @@ export default async function AdminPhotosPage({
     tag: tag || null,
     status: status || null,
     visibility: visibility || null,
-    sort
+    sort,
   });
   const buildAdminHref = (targetPage: number) => {
     const params = new URLSearchParams();
-    for (const [key, value] of Object.entries({ limit, search, tag, status, visibility, sort })) {
+    for (const [key, value] of Object.entries({
+      limit,
+      search,
+      tag,
+      status,
+      visibility,
+      sort,
+    })) {
       if (value) params.set(key, value);
     }
     if (targetPage > 1) params.set("page", String(targetPage));
@@ -48,28 +57,35 @@ export default async function AdminPhotosPage({
   };
 
   return (
-    <main className="shell w-[min(1180px,calc(100%_-_32px))]">
-      <section className="page-heading row-heading">
+    <main className="flex flex-col max-w-[1200px] mx-auto">
+      <section className="flex justify-between items-end py-6">
         <div>
           <p className="eyebrow">Admin</p>
           <h1>Photos</h1>
           <p>Review uploads, edit metadata, and retry failed processing.</p>
         </div>
-        <Link className="button-link" href="/admin/photos/upload">
-          Upload
-        </Link>
-        <Link className="button-link secondary" href="/admin/tags">
-          Tags
-        </Link>
-        <Link className="button-link secondary" href="/admin/collections">
-          Collections
-        </Link>
+        <div className="flex gap-2">
+          <Link className="button-link" href="/admin/photos/upload">
+            Upload
+          </Link>
+          <Link className="button-link secondary" href="/admin/tags">
+            Tags
+          </Link>
+          <Link className="button-link secondary" href="/admin/collections">
+            Collections
+          </Link>
+        </div>
       </section>
 
       <form className="admin-photo-controls" method="get">
         <label>
           Search
-          <input defaultValue={search} name="search" placeholder="Title, description, tag" type="search" />
+          <input
+            defaultValue={search}
+            name="search"
+            placeholder="Title, description, tag"
+            type="search"
+          />
         </label>
         <label>
           Tag
@@ -109,7 +125,14 @@ export default async function AdminPhotosPage({
         </label>
         <label>
           Page size
-          <input defaultValue={limit} inputMode="numeric" min="1" max="100" name="limit" type="number" />
+          <input
+            defaultValue={limit}
+            inputMode="numeric"
+            min="1"
+            max="100"
+            name="limit"
+            type="number"
+          />
         </label>
         <div className="admin-photo-control-actions">
           <button className="button-link" type="submit">
@@ -124,25 +147,41 @@ export default async function AdminPhotosPage({
       {photos.items.length > 0 ? (
         <div className="admin-photo-list">
           {photos.items.map((photo) => {
-            const imageUrl = photo.thumbnailUrl || photo.mediumUrl || photo.largeUrl;
+            const imageUrl =
+              photo.thumbnailUrl || photo.mediumUrl || photo.largeUrl;
 
             return (
-              <article className="admin-photo-row admin-photo-row-with-preview" key={photo.id}>
+              <article
+                className="admin-photo-row admin-photo-row-with-preview"
+                key={photo.id}
+              >
                 {imageUrl ? (
-                  <img alt={photo.title || "Photo preview"} height={120} src={imageUrl} width={160} />
+                  <img
+                    alt={photo.title || "Photo preview"}
+                    height={120}
+                    src={imageUrl}
+                    width={160}
+                  />
                 ) : (
                   <span className="admin-photo-placeholder">No image</span>
                 )}
                 <div>
-                  <h2>{photo.title || "Untitled"}</h2>
                   <p>
                     {photo.status} · {photo.visibility}
                   </p>
-                  {photo.tags.length > 0 ? <p>{photo.tags.join(", ")}</p> : null}
+                  <PhotoTitleEditor
+                    photoId={photo.id}
+                    title={photo.title}
+                    visibility={photo.visibility ?? "private"}
+                  />
+
+                  {photo.tags.length > 0 ? (
+                    <p>{photo.tags.join(", ")}</p>
+                  ) : null}
                 </div>
                 <div className="admin-photo-actions">
-                  <Link className="button-link secondary" href={`/admin/photos/${photo.id}/edit`}>
-                    Edit
+                  <Link className="" href={`/admin/photos/${photo.id}/edit`}>
+                    <Edit2Icon className="w-4 h-4 cursor-pointer text-gray-700 hover:text-gray-900"></Edit2Icon>
                   </Link>
                   <DeletePhotoButton photoId={photo.id} />
                 </div>

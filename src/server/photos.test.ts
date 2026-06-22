@@ -1,12 +1,27 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { query } from "@/lib/db";
 
 import {
   getCollectionMembershipChanges,
+  getPhotos,
+  getPublicPhotoNeighbors,
   parseCreatePhotoAssetRequest,
   parseCreatePhotoRequest,
   parsePhotoListQuery,
   parseUpdatePhotoRequest
 } from "./photos";
+
+vi.mock("@/lib/db", () => ({
+  getPool: vi.fn(),
+  query: vi.fn()
+}));
+
+const mockedQuery = vi.mocked(query);
+
+beforeEach(() => {
+  mockedQuery.mockReset();
+});
 
 describe("parseCreatePhotoRequest", () => {
   it("keeps uploaded photo tags as a clean unique list", () => {
@@ -124,6 +139,22 @@ describe("parseUpdatePhotoRequest", () => {
     });
   });
 
+  it("accepts deleted asset ids when removing images from a photo set", () => {
+    expect(
+      parseUpdatePhotoRequest({
+        deletedAssetIds: [
+          "660e8400-e29b-41d4-a716-446655440000",
+          "660e8400-e29b-41d4-a716-446655440001"
+        ]
+      })
+    ).toEqual({
+      deletedAssetIds: [
+        "660e8400-e29b-41d4-a716-446655440000",
+        "660e8400-e29b-41d4-a716-446655440001"
+      ]
+    });
+  });
+
   it("keeps tags absent for partial representative-only updates", () => {
     expect(parseUpdatePhotoRequest({})).toEqual({});
   });
@@ -168,7 +199,7 @@ describe("parsePhotoListQuery", () => {
     });
   });
 
-  it("drops unsupported filters and falls back to newest sorting", () => {
+  it("drops unsupported filters and falls back to newest taken sorting", () => {
     expect(
       parsePhotoListQuery({
         limit: "0",
@@ -186,8 +217,32 @@ describe("parsePhotoListQuery", () => {
       tag: null,
       status: null,
       visibility: null,
-      sort: "newest"
+      sort: "taken-newest"
     });
+  });
+});
+
+describe("public photo ordering", () => {
+  it("orders public lists by newest taken date first by default", async () => {
+    mockedQuery
+      .mockResolvedValueOnce({ rows: [{ total: "0" }] } as never)
+      .mockResolvedValueOnce({ rows: [] } as never);
+
+    await getPhotos({ limit: "30", page: null });
+
+    expect(mockedQuery.mock.calls[1]?.[0]).toContain(
+      "ORDER BY COALESCE(p.taken_at, p.uploaded_at) DESC, p.id DESC"
+    );
+  });
+
+  it("orders detail neighbors by the same newest taken date sequence", async () => {
+    mockedQuery.mockResolvedValueOnce({ rows: [] } as never);
+
+    await getPublicPhotoNeighbors("current-photo");
+
+    expect(mockedQuery.mock.calls[0]?.[0]).toContain(
+      "ROW_NUMBER() OVER (ORDER BY COALESCE(p.taken_at, p.uploaded_at) DESC, p.id DESC)"
+    );
   });
 });
 

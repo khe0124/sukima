@@ -63,17 +63,35 @@ export function EditPhotoForm({
   const [assetFiles, setAssetFiles] = useState<File[]>([]);
   const [isUploadingAssets, setIsUploadingAssets] = useState(false);
   const assetInputRef = useRef<HTMLInputElement>(null);
-  const galleryItems = getRepresentativeGalleryItems(photo);
+  const allGalleryItems = useMemo(() => getRepresentativeGalleryItems(photo), [photo]);
+  const [deletedAssetIds, setDeletedAssetIds] = useState<string[]>([]);
+  const galleryItems = allGalleryItems.filter((item) => !deletedAssetIds.includes(item.id));
   const initialPrimaryAssetId = galleryItems.find((item) => item.isPrimary)?.id ?? galleryItems[0]?.id ?? photo.id;
   const [selectedPrimaryAssetId, setSelectedPrimaryAssetId] = useState(initialPrimaryAssetId);
   const selectedGalleryItem = galleryItems.find((item) => item.id === selectedPrimaryAssetId);
   const assetValidations = useMemo(() => validateUploadFiles(assetFiles), [assetFiles]);
   const assetValidationSummary = assetFiles.length > 0 ? getUploadValidationSummary(assetValidations) : null;
-  const canChangeRepresentative = Boolean(photo.assets && photo.assets.some((asset) => asset.thumbnailUrl || asset.mediumUrl || asset.largeUrl));
+  const canChangeRepresentative = galleryItems.some((item) => Boolean(item.imageUrl));
   const shouldSubmitRepresentative =
     canChangeRepresentative &&
-    selectedPrimaryAssetId !== initialPrimaryAssetId &&
+    (selectedPrimaryAssetId !== initialPrimaryAssetId || deletedAssetIds.includes(initialPrimaryAssetId)) &&
     Boolean(selectedGalleryItem?.imageUrl);
+
+  function handleRemoveGalleryItem(assetId: string) {
+    if (galleryItems.length <= 1) {
+      setStatus("At least one image is required.");
+      return;
+    }
+
+    const remainingItems = galleryItems.filter((item) => item.id !== assetId);
+    setDeletedAssetIds((current) => [...current, assetId]);
+
+    if (selectedPrimaryAssetId === assetId) {
+      setSelectedPrimaryAssetId(remainingItems.find((item) => item.imageUrl)?.id ?? remainingItems[0]?.id ?? photo.id);
+    }
+
+    setStatus("Image removed from this edit. Save to delete it from the post.");
+  }
 
   function handleAssetFileChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.currentTarget.files ?? []);
@@ -107,7 +125,8 @@ export function EditPhotoForm({
         ),
         visibility: String(form.get("visibility") || "private"),
         collectionIds: selectedCollectionIds,
-        ...(shouldSubmitRepresentative ? { primaryAssetId: selectedPrimaryAssetId } : {})
+        ...(shouldSubmitRepresentative ? { primaryAssetId: selectedPrimaryAssetId } : {}),
+        ...(deletedAssetIds.length > 0 ? { deletedAssetIds } : {})
       })
     });
 
@@ -118,6 +137,7 @@ export function EditPhotoForm({
     }
 
     setStatus("Saved.");
+    setDeletedAssetIds([]);
     router.refresh();
   }
 
@@ -227,33 +247,46 @@ export function EditPhotoForm({
             const isSelectable = Boolean(item.imageUrl);
 
             return (
-              <label
+              <div
                 className="representative-gallery-item"
                 data-selected={selectedPrimaryAssetId === item.id}
                 key={item.id}
               >
-                <input
-                  aria-label={label}
-                  checked={selectedPrimaryAssetId === item.id}
-                  disabled={!isSelectable}
-                  name="primaryAssetId"
-                  onChange={() => setSelectedPrimaryAssetId(item.id)}
-                  type="radio"
-                  value={item.id}
-                />
-                {item.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    alt=""
-                    height={item.height || 600}
-                    src={item.imageUrl}
-                    width={item.width || 800}
+                <label className="representative-gallery-choice">
+                  <input
+                    aria-label={label}
+                    checked={selectedPrimaryAssetId === item.id}
+                    disabled={!isSelectable}
+                    name="primaryAssetId"
+                    onChange={() => setSelectedPrimaryAssetId(item.id)}
+                    type="radio"
+                    value={item.id}
                   />
-                ) : (
-                  <span className="representative-gallery-placeholder">No image</span>
-                )}
+                  {item.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      alt=""
+                      height={item.height || 600}
+                      src={item.imageUrl}
+                      width={item.width || 800}
+                    />
+                  ) : (
+                    <span className="representative-gallery-placeholder">No image</span>
+                  )}
+                </label>
+                {photo.assets && photo.assets.length > 1 ? (
+                  <button
+                    aria-label={`Delete image ${index + 1}`}
+                    className="representative-gallery-remove"
+                    disabled={galleryItems.length <= 1}
+                    onClick={() => handleRemoveGalleryItem(item.id)}
+                    type="button"
+                  >
+                    x
+                  </button>
+                ) : null}
                 <span>{selectedPrimaryAssetId === item.id ? "Representative" : `Image ${index + 1}`}</span>
-              </label>
+              </div>
             );
           })}
         </div>

@@ -521,6 +521,8 @@ NEXT_PUBLIC_SITE_URL=
 
 ADMIN_EMAIL=
 AUTH_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
 ```
 
 Rules:
@@ -528,6 +530,7 @@ Rules:
 * Variables prefixed with `NEXT_PUBLIC_` are exposed to the browser.
 * Never prefix secrets with `NEXT_PUBLIC_`.
 * R2 secret keys must only be used server-side.
+* Google OAuth client secret must only be used server-side.
 
 ---
 

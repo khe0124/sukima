@@ -5,6 +5,8 @@ import { assertSameOriginRequest, getApiErrorStatus } from "@/lib/security";
 import { processPhoto } from "@/server/photos";
 
 export const runtime = "nodejs";
+// 원본 + 모든 asset에 대한 sharp 처리가 기본 함수 타임아웃(10s)을 넘길 수 있어 상향한다.
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   try {

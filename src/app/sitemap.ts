@@ -21,12 +21,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 1
     },
     {
-      url: buildCanonicalUrl("/archive"),
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.9
-    },
-    {
       url: buildCanonicalUrl("/collections"),
       lastModified: now,
       changeFrequency: "weekly",

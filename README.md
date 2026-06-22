@@ -14,8 +14,8 @@ Personal photo archive MVP built with Next.js, PostgreSQL, and Cloudflare R2.
 - Provide admin tag management at `/admin/tags`.
 - Provide admin collection management at `/admin/collections`.
 - Generate short-lived signed URLs for admin original downloads.
-- Render public archive and detail pages at `/archive` and `/archive/[slug]`.
-- Filter public archive pages by tag with `/archive?tag=...`.
+- Render the public archive grid at `/` and detail pages at `/archive/[slug]`.
+- Filter public archive photos by tag with `/?tag=...`.
 - Render public collection pages at `/collections` and `/collections/[slug]`.
 - Provide a logout button in the admin navigation.
 
@@ -43,6 +43,20 @@ NEXT_PUBLIC_SITE_URL=
 AUTH_SECRET=
 ADMIN_EMAIL=
 ADMIN_PASSWORD=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+```
+
+Google admin login also requires this authorized redirect URI in Google Cloud:
+
+```txt
+http://localhost:3000/api/admin/auth/google/callback
+```
+
+For production, register the same path on the deployed origin:
+
+```txt
+https://your-domain.example/api/admin/auth/google/callback
 ```
 
 ## Database
@@ -78,8 +92,8 @@ private R2 original -> public WebP variants -> DB status ready
 Public pages:
 
 ```txt
-http://localhost:3000/archive
-http://localhost:3000/archive?tag=street
+http://localhost:3000/
+http://localhost:3000/?tag=street
 http://localhost:3000/archive/[slug]
 http://localhost:3000/collections
 http://localhost:3000/collections/[slug]

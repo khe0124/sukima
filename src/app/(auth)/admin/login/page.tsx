@@ -14,12 +14,12 @@ export default function AdminLoginPage() {
     const response = await fetch("/api/admin/login", {
       method: "POST",
       headers: {
-        "content-type": "application/json"
+        "content-type": "application/json",
       },
       body: JSON.stringify({
         email: String(form.get("email") || ""),
-        password: String(form.get("password") || "")
-      })
+        password: String(form.get("password") || ""),
+      }),
     });
 
     if (!response.ok) {
@@ -39,19 +39,34 @@ export default function AdminLoginPage() {
         <p>Sign in to manage uploads.</p>
       </section>
 
-      <form action="/api/admin/login" className="upload-form" method="post" onSubmit={handleSubmit}>
+      <form
+        action="/api/admin/login"
+        className="upload-form"
+        method="post"
+        onSubmit={handleSubmit}
+      >
         <label className="field-group">
           <span className="field-label">Email</span>
           <input name="email" type="email" autoComplete="username" required />
         </label>
         <label className="field-group">
           <span className="field-label">Password</span>
-          <input name="password" type="password" autoComplete="current-password" required />
+          <input
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+          />
         </label>
+        <p className="" role="status">
+          {status}
+        </p>
         <div className="form-actions">
           <button type="submit">Login</button>
+          <a className="button-link secondary" href="/api/admin/auth/google">
+            Continue with Google
+          </a>
         </div>
-        <p className="form-status" role="status">{status}</p>
       </form>
     </main>
   );

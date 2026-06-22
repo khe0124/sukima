@@ -13,6 +13,13 @@ describe("AdminLoginPage", () => {
     expect(html).toContain('method="post"');
   });
 
+  it("links to Google admin login", () => {
+    const html = renderToStaticMarkup(<AdminLoginPage />);
+
+    expect(html).toContain('href="/api/admin/auth/google"');
+    expect(html).toContain("Continue with Google");
+  });
+
   it("prevents admin login indexing", () => {
     expect(metadata.robots).toEqual({
       index: false,
