@@ -5,6 +5,8 @@ import { Pagination } from "@/components/Pagination";
 import { getPhotos } from "@/server/photos";
 
 import DeletePhotoButton from "./DeletePhotoButton";
+import PhotoTitleEditor from "./PhotoTitleEditor";
+import { Edit2Icon } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -164,20 +166,22 @@ export default async function AdminPhotosPage({
                   <span className="admin-photo-placeholder">No image</span>
                 )}
                 <div>
-                  <h2>{photo.title || "Untitled"}</h2>
                   <p>
                     {photo.status} · {photo.visibility}
                   </p>
+                  <PhotoTitleEditor
+                    photoId={photo.id}
+                    title={photo.title}
+                    visibility={photo.visibility ?? "private"}
+                  />
+
                   {photo.tags.length > 0 ? (
                     <p>{photo.tags.join(", ")}</p>
                   ) : null}
                 </div>
                 <div className="admin-photo-actions">
-                  <Link
-                    className="button-link secondary"
-                    href={`/admin/photos/${photo.id}/edit`}
-                  >
-                    Edit
+                  <Link className="" href={`/admin/photos/${photo.id}/edit`}>
+                    <Edit2Icon className="w-4 h-4 cursor-pointer text-gray-700 hover:text-gray-900"></Edit2Icon>
                   </Link>
                   <DeletePhotoButton photoId={photo.id} />
                 </div>

@@ -48,33 +48,43 @@ export function ViewedPhotoTile({
   showTags = true
 }: ViewedPhotoTileProps) {
   return (
-    <Link
-      className="grid gap-2 text-[var(--foreground)] no-underline"
-      href={href}
-    >
-      {imageUrl ? (
-        <ViewedPhotoImage
-          alt={photo.title || "Archived photo"}
-          className="block aspect-[4/3] h-auto w-full bg-[var(--line)] object-cover"
-          height={photo.height || 900}
-          imageUrl={imageUrl}
-          width={photo.width || 1200}
-        />
-      ) : (
-        <span className="grid aspect-[4/3] place-items-center border border-[var(--line)] text-[var(--muted)]">
-          {placeholderText}
+    <article className="grid gap-2">
+      <Link
+        className="grid gap-2 text-[var(--foreground)] no-underline"
+        href={href}
+      >
+        {imageUrl ? (
+          <span className="block aspect-[4/3] overflow-hidden bg-[var(--line)]">
+            <ViewedPhotoImage
+              alt={photo.title || "Archived photo"}
+              className="block h-full w-full object-cover transition-transform duration-300 ease-out hover:scale-125"
+              height={photo.height || 900}
+              imageUrl={imageUrl}
+              width={photo.width || 1200}
+            />
+          </span>
+        ) : (
+          <span className="grid aspect-[4/3] place-items-center border border-[var(--line)] text-[var(--muted)]">
+            {placeholderText}
+          </span>
+        )}
+        <span className="min-h-[1.4em] text-[0.75rem] text-[var(--muted)] [overflow-wrap:anywhere]">
+          {photo.title || "Untitled"}
         </span>
-      )}
-      <span className="min-h-[1.4em] text-[0.75rem] text-[var(--muted)] [overflow-wrap:anywhere]">
-        {photo.title || "Untitled"}
-      </span>
+      </Link>
       {showTags && photo.tags && photo.tags.length > 0 ? (
         <span className="flex flex-wrap gap-1.5 text-[0.6875rem] text-[var(--muted)]">
           {photo.tags.slice(0, 3).map((tag) => (
-            <span key={tag}>#{tag}</span>
+            <Link
+              className="text-inherit no-underline hover:text-[var(--foreground)] focus-visible:text-[var(--foreground)]"
+              href={`/?tag=${encodeURIComponent(tag)}`}
+              key={tag}
+            >
+              #{tag}
+            </Link>
           ))}
         </span>
       ) : null}
-    </Link>
+    </article>
   );
 }

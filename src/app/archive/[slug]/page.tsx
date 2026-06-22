@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import React from "react";
 import { cache } from "react";
+import { ArrowLeftIcon, ArrowRightIcon } from "lucide-react";
 
 import {
   buildCanonicalUrl,
@@ -102,17 +103,21 @@ export default async function PhotoDetailPage({
 
   return (
     <main className="shell w-[min(720px,calc(100%_-_32px))]">
-      <Link className="button-link secondary self-start" href="/">
-        ← Archive
-      </Link>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(structuredData) }}
       />
+
       <section className="self-start">
-        <p className="eyebrow">Photo</p>
-        <h1>{photo.title || "Untitled"}</h1>
-        {photo.description ? <p>{photo.description}</p> : null}
+        <div className="flex gap-4">
+          <Link className="self-start" href="/">
+            ←
+          </Link>
+          <p className="eyebrow">Photo</p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <h1>{photo.title || "Untitled"}</h1>
+        </div>
         {photo.takenAt ? (
           <p>
             Taken{" "}
@@ -123,6 +128,9 @@ export default async function PhotoDetailPage({
             }).format(new Date(photo.takenAt))}
           </p>
         ) : null}
+        <div className="mt-6 text-sm text-gray-500 border-t border-gray-200 pt-6">
+          {photo.description ? <p>{photo.description}</p> : null}
+        </div>
         {photo.tags.length > 0 ? (
           <ul
             className="mt-6 flex list-none flex-wrap gap-2 p-0"
@@ -147,7 +155,7 @@ export default async function PhotoDetailPage({
           {photo.assets &&
           photo.assets.filter((asset) => !asset.isPrimary).length > 0 ? (
             <div
-              className="grid grid-cols-2 gap-4"
+              className="grid grid-cols-2 md:grid-cols-3 gap-4"
               aria-label="Additional images"
             >
               {photo.assets
@@ -174,37 +182,39 @@ export default async function PhotoDetailPage({
       <div className="w-full items-center justify-center">
         <nav
           aria-label="Photo navigation"
-          className="mt-8 flex w-full flex-wrap items-center justify-center gap-3 border-t border-[var(--line)] pt-6"
+          className="mt-8 flex w-full flex-wrap items-center justify-between gap-3 border-t border-[var(--line)] pt-6"
         >
-          {photoNeighbors.previous ? (
-            <Link
-              aria-label={`Previous photo: ${photoNeighbors.previous.title || "Untitled"}`}
-              className="button-link secondary"
-              href={`/archive/${photoNeighbors.previous.slug}`}
-            >
-              Previous
-            </Link>
-          ) : (
-            <span aria-disabled="true" className="button-link secondary">
-              Previous
-            </span>
-          )}
-          <Link className="button-link" href="/">
-            Archive
+          <div className="flex gap-2">
+            {photoNeighbors.previous ? (
+              <Link
+                aria-label={`Previous photo: ${photoNeighbors.previous.title || "Untitled"}`}
+                className="button-link secondary"
+                href={`/archive/${photoNeighbors.previous.slug}`}
+              >
+                <ArrowLeftIcon className="size-4" />
+              </Link>
+            ) : (
+              <span aria-disabled="true" className="button-link secondary">
+                <ArrowLeftIcon className="size-4" />
+              </span>
+            )}
+            {photoNeighbors.next ? (
+              <Link
+                aria-label={`Next photo: ${photoNeighbors.next.title || "Untitled"}`}
+                className="button-link secondary"
+                href={`/archive/${photoNeighbors.next.slug}`}
+              >
+                <ArrowRightIcon className="size-4" />
+              </Link>
+            ) : (
+              <span aria-disabled="true" className="button-link secondary">
+                <ArrowRightIcon className="size-4" />
+              </span>
+            )}
+          </div>
+          <Link className="button-link secondary" href="/">
+            List
           </Link>
-          {photoNeighbors.next ? (
-            <Link
-              aria-label={`Next photo: ${photoNeighbors.next.title || "Untitled"}`}
-              className="button-link secondary"
-              href={`/archive/${photoNeighbors.next.slug}`}
-            >
-              Next
-            </Link>
-          ) : (
-            <span aria-disabled="true" className="button-link secondary">
-              Next
-            </span>
-          )}
         </nav>
       </div>
     </main>

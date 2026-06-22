@@ -121,14 +121,17 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           workflow.
         </p>
         {activeTag ? (
-          <p>
+          <div className="flex w-full items-center justify-between">
+            <p className="m-0 text-[0.875rem] text-[var(--muted)]">
+              #{activeTag}
+            </p>
             <Link href="/">Clear filter</Link>
-          </p>
+          </div>
         ) : null}
       </section>
 
       {photos.items.length > 0 ? (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-[14px]">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-[14px]">
           {photos.items.map((photo) => {
             const href = photo.slug ? `/archive/${photo.slug}` : "#";
             const imageUrl =
@@ -153,7 +156,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         currentPage={photos.page}
         totalPages={photos.totalPages}
       />
-      <div className="mt-8 flex gap-2 justify-end border-t border-[var(--line)] pt-6">
+      <div className="mt-8 flex gap-2 justify-end border-t border-[var(--line)] pt-3">
         <Link className="" href="/collections">
           View collections
         </Link>

@@ -57,5 +57,7 @@ describe("HomePage", () => {
       tag: "home"
     });
     expect(html).toContain('href="/"');
+    expect(html).toContain('class="flex w-full items-center justify-between"');
+    expect(html).toContain("#home");
   });
 });
