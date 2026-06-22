@@ -7,7 +7,9 @@ const requiredServerEnv = [
   "R2_BUCKET_PUBLIC",
   "ADMIN_EMAIL",
   "ADMIN_PASSWORD",
-  "AUTH_SECRET"
+  "AUTH_SECRET",
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET"
 ] as const;
 
 export function getRequiredEnv(name: (typeof requiredServerEnv)[number]) {

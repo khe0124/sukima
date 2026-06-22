@@ -524,6 +524,22 @@ a {
   align-items: center;
 }
 
+.form-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.form-divider::before,
+.form-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--line);
+}
+
 .upload-form button,
 .inline-form button,
 .manager-row button {

@@ -7,7 +7,7 @@ Vercel + Neon Postgres + Cloudflare R2 기준. 이 문서는 코드에서 확인
 - **앱**: Next.js 14 (App Router). 목록/상세/admin은 `force-dynamic` — 빌드 시 DB 불필요. `sitemap.xml`은 dynamic이며 DB 실패 시 빈 배열로 폴백.
 - **DB**: Postgres. 앱은 `pg.Pool`로 접속(`src/lib/db.ts`). 스키마는 `db/schema.sql` + `db/migrations/`. **자동 마이그레이션 러너 없음 — 수동 적용.**
 - **스토리지**: Cloudflare R2 (S3 호환). 버킷 2개 — private(원본), public(처리된 공개 이미지).
-- **인증**: 단일 admin. HMAC-SHA256 세션 쿠키 + 상수시간 비교(`src/lib/auth.ts`).
+- **인증**: 단일 admin. 이메일/비밀번호 또는 Google OAuth로 로그인한 뒤 HMAC-SHA256 세션 쿠키 발급 + 상수시간 비교(`src/lib/auth.ts`).
 
 ## 환경변수
 
@@ -24,10 +24,18 @@ Vercel 프로젝트 → Settings → Environment Variables(Production)에 등록
 | `ADMIN_EMAIL` | ✅ | admin 로그인 이메일. |
 | `ADMIN_PASSWORD` | ✅ | admin 로그인 비밀번호. 강하게. |
 | `AUTH_SECRET` | ✅ | 세션 토큰 서명용 시크릿. 길고 랜덤하게(예: `openssl rand -base64 32`). |
+| `GOOGLE_CLIENT_ID` | ✅ | Google OAuth Web application client ID. |
+| `GOOGLE_CLIENT_SECRET` | ✅ | Google OAuth Web application client secret. 서버 전용. |
 | `R2_PUBLIC_BASE_URL` | 사실상 필수 | public 버킷의 공개 도메인. 없으면 공개 이미지 URL이 안 만들어진다(함정 3a). |
 | `NEXT_PUBLIC_SITE_URL` | 사실상 필수 | 서비스 절대 URL. 없으면 canonical/OG가 `http://localhost:3000`으로 폴백(함정 2). |
 
-> 필수 9개 중 하나라도 없으면 해당 기능 요청 시 런타임에서 `Missing environment variable: X`로 throw(`src/lib/env.ts`). 빌드는 통과하므로 배포 후에야 드러난다.
+> 필수 env 중 하나라도 없으면 해당 기능 요청 시 런타임에서 `Missing environment variable: X`로 throw(`src/lib/env.ts`). 빌드는 통과하므로 배포 후에야 드러난다.
+
+Google Cloud OAuth client의 Authorized redirect URI에는 배포 도메인의 callback을 등록한다:
+
+```txt
+https://실제도메인/api/admin/auth/google/callback
+```
 
 ## 배포 절차
 
@@ -58,7 +66,7 @@ git push -u origin main
 
 순서대로 하면 각 함정을 한 번씩 검증한다:
 
-1. `/admin` 로그인 — `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`AUTH_SECRET` 검증.
+1. `/admin` 로그인 — `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`AUTH_SECRET` 또는 Google OAuth callback 검증.
 2. 사진 1장 업로드 — presigned PUT(→ private 버킷)과 이미지 처리 검증. 실패 시 함정 3b(CORS) 의심.
 3. `/archive`에서 그 사진 표시 — `R2_PUBLIC_BASE_URL`/public 버킷 공개 검증. 깨지면 함정 3a.
 4. 페이지 소스에서 `<link rel="canonical">`이 실제 도메인인지 — 함정 2 검증.
@@ -117,7 +125,7 @@ git push -u origin main
 - 부분 실패: 업로드·메타 저장은 됐는데 처리가 끊기면 photo가 `processing`/`failed`로 남는다. admin의 status=failed 필터에서 재처리.
 - 한 번에 적당한 크기·수량으로. 장기적으론 백그라운드 큐 검토.
 
-**로그인 brute-force 보호 없음.** rate limiting/throttle 코드가 없다. `/api/admin/login`은 same-origin 체크만 한다 → 단일 `ADMIN_PASSWORD`가 사실상 유일한 방어선.
+**로그인 brute-force 보호 없음.** rate limiting/throttle 코드가 없다. `/api/admin/login`은 same-origin 체크만 한다. 비밀번호 로그인은 단일 `ADMIN_PASSWORD`, Google 로그인은 `ADMIN_EMAIL`과 일치하는 verified Google 계정만 통과한다.
 - `ADMIN_PASSWORD`를 아주 강하게, `AUTH_SECRET`은 `openssl rand -base64 32` 수준 랜덤.
 - 앞단에 Cloudflare/Vercel WAF·rate limit 검토.
 

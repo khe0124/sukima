@@ -43,6 +43,20 @@ NEXT_PUBLIC_SITE_URL=
 AUTH_SECRET=
 ADMIN_EMAIL=
 ADMIN_PASSWORD=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+```
+
+Google admin login also requires this authorized redirect URI in Google Cloud:
+
+```txt
+http://localhost:3000/api/admin/auth/google/callback
+```
+
+For production, register the same path on the deployed origin:
+
+```txt
+https://your-domain.example/api/admin/auth/google/callback
 ```
 
 ## Database

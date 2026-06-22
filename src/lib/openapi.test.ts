@@ -51,4 +51,14 @@ describe("buildOpenApiDocument", () => {
     expect(serialized).not.toContain("R2_ACCESS_KEY_ID");
     expect(serialized).not.toContain("AUTH_SECRET");
   });
+
+  it("describes Google admin login endpoints without exposing OAuth secrets", () => {
+    const document = buildOpenApiDocument();
+    const serialized = JSON.stringify(document);
+
+    expect(document.paths["/api/admin/auth/google"].get.summary).toContain("Google");
+    expect(document.paths["/api/admin/auth/google/callback"].get.summary).toContain("Google");
+    expect(serialized).not.toContain("GOOGLE_CLIENT_SECRET");
+    expect(serialized).not.toContain("GOOGLE_CLIENT_ID");
+  });
 });

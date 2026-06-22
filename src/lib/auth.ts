@@ -5,7 +5,9 @@ import { NextRequest } from "next/server";
 import { getRequiredEnv } from "./env";
 
 export const ADMIN_SESSION_COOKIE = "sukima_admin_session";
+export const GOOGLE_OAUTH_STATE_COOKIE = "sukima_google_oauth_state";
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 14;
+const OAUTH_STATE_TTL_SECONDS = 60 * 10;
 
 function base64UrlEncode(value: string) {
   return Buffer.from(value).toString("base64url");
@@ -116,4 +118,28 @@ export function getAdminSessionCookieOptions() {
     path: "/",
     maxAge: SESSION_TTL_SECONDS
   };
+}
+
+export function getGoogleOAuthStateCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: OAUTH_STATE_TTL_SECONDS
+  };
+}
+
+export function getExpiredGoogleOAuthStateCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    path: "/",
+    maxAge: 0
+  };
+}
+
+export function isConfiguredAdminEmail(email: string, adminEmail = getRequiredEnv("ADMIN_EMAIL")) {
+  return safeEqual(email.trim().toLowerCase(), adminEmail.trim().toLowerCase());
 }

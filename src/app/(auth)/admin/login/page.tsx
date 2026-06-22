@@ -40,6 +40,14 @@ export default function AdminLoginPage() {
       </section>
 
       <form action="/api/admin/login" className="upload-form" method="post" onSubmit={handleSubmit}>
+        <div className="form-actions">
+          <a className="button-link secondary" href="/api/admin/auth/google">
+            Continue with Google
+          </a>
+        </div>
+        <div className="form-divider" aria-hidden="true">
+          <span>or</span>
+        </div>
         <label className="field-group">
           <span className="field-label">Email</span>
           <input name="email" type="email" autoComplete="username" required />
